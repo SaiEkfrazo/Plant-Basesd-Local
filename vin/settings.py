@@ -131,26 +131,26 @@ SWAGGER_SETTINGS = {
 # settings for local mysql 
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'vin',                  # Local database name
-        'USER': 'saitreddy',            # Local database user
-        'PASSWORD': 'sai',              # Local database password
-        'HOST': 'localhost',            # Local database host
-        'PORT': '3306',                 # Local database port
-    },
-    # 'default':
-    #        {
-    #        'ENGINE': 'django.db.backends.mysql',
-    #        'NAME': 'vin',
-    #        'USER': 'root',  
-    #        'PASSWORD': 'sai',  
-    #        'HOST': 'db',  
-    #        'PORT': '3306',    
-    #        },
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.mysql',
+    #     'NAME': 'vin',                  # Local database name
+    #     'USER': 'saitreddy',            # Local database user
+    #     'PASSWORD': 'sai',              # Local database password
+    #     'HOST': 'localhost',            # Local database host
+    #     'PORT': '3306',                 # Local database port
+    # },
+    'default':
+           {
+           'ENGINE': 'django.db.backends.mysql',
+           'NAME': 'vin',
+           'USER': 'root',  
+           'PASSWORD': 'sai',  
+           'HOST': 'db',  
+           'PORT': '3306',    
+           },
     'cloud': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'VIN_LOCAL',            # Cloud database name
+        'NAME': 'VIN_LOCAL_PLANT',            # Cloud database name
         'USER': 'root',                 # Cloud database user
         'PASSWORD': 'AIVolved',         # Cloud database password
         'HOST': '159.65.157.118',       # Cloud database host (replace with IP or domain)
@@ -295,13 +295,13 @@ USE_TZ = True
 
 # media files settings for docker 
 
-# MEDIA_URL = '/media/'
-# MEDIA_ROOT = '/app/media/'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = '/app/media/'
 
 # media files settings for local 
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# MEDIA_URL = '/media/'
+# MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 PORT = '8000'
 # Static files (CSS, JavaScript, Images)
