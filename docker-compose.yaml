@@ -1,0 +1,534 @@
+# # version: '3'
+
+# # services:
+# #   django1:
+# #     build: .
+# #     ports:
+# #       - "8001:8000"  # External port 8001 maps to internal port 8000
+# #     environment:
+# #       - PYTHONUNBUFFERED=1
+# #       - PYTHONDONTWRITEBYTECODE=1
+# #       - vin_env=1
+# #       - DATABASE_ENGINE=django.db.backends.mysql
+# #       - DATABASE_NAME=vin  
+# #       - DATABASE_USER=saitreddy  
+# #       - DATABASE_PASSWORD=sai  
+# #       - DATABASE_HOST=db
+# #       - DATABASE_PORT=3306
+# #     volumes:
+# #       - media_volume:/app/media/
+
+# #   django2:
+# #     build: .
+# #     ports:
+# #       - "8002:8000"  # External port 8002 maps to internal port 8000
+# #     environment:
+# #       - PYTHONUNBUFFERED=1
+# #       - PYTHONDONTWRITEBYTECODE=1
+# #       - vin_env=1
+# #       - DATABASE_ENGINE=django.db.backends.mysql
+# #       - DATABASE_NAME=vin  
+# #       - DATABASE_USER=saitreddy  
+# #       - DATABASE_PASSWORD=sai  
+# #       - DATABASE_HOST=db
+# #       - DATABASE_PORT=3306
+# #     volumes:
+# #       - media_volume:/app/media/
+
+# #   django3:
+# #     build: .
+# #     ports:
+# #       - "8003:8000"  # External port 8003 maps to internal port 8000
+# #     environment:
+# #       - PYTHONUNBUFFERED=1
+# #       - PYTHONDONTWRITEBYTECODE=1
+# #       - vin_env=1
+# #       - DATABASE_ENGINE=django.db.backends.mysql
+# #       - DATABASE_NAME=vin  
+# #       - DATABASE_USER=saitreddy  
+# #       - DATABASE_PASSWORD=sai  
+# #       - DATABASE_HOST=db
+# #       - DATABASE_PORT=3306
+# #     volumes:
+# #       - media_volume:/app/media/
+
+# #   django4:
+# #     build: .
+# #     ports:
+# #       - "8004:8000"  # External port 8004 maps to internal port 8000
+# #     environment:
+# #       - PYTHONUNBUFFERED=1
+# #       - PYTHONDONTWRITEBYTECODE=1
+# #       - vin_env=1
+# #       - DATABASE_ENGINE=django.db.backends.mysql
+# #       - DATABASE_NAME=vin  
+# #       - DATABASE_USER=saitreddy  
+# #       - DATABASE_PASSWORD=sai  
+# #       - DATABASE_HOST=db
+# #       - DATABASE_PORT=3306
+# #     volumes:
+# #       - media_volume:/app/media/
+
+# #   django5:
+# #     build: .
+# #     ports:
+# #       - "8005:8000"  # External port 8005 maps to internal port 8000
+# #     environment:
+# #       - PYTHONUNBUFFERED=1
+# #       - PYTHONDONTWRITEBYTECODE=1
+# #       - vin_env=1
+# #       - DATABASE_ENGINE=django.db.backends.mysql
+# #       - DATABASE_NAME=vin  
+# #       - DATABASE_USER=saitreddy  
+# #       - DATABASE_PASSWORD=sai  
+# #       - DATABASE_HOST=db
+# #       - DATABASE_PORT=3306
+# #     volumes:
+# #       - media_volume:/app/media/
+
+# #   django6:
+# #     build: .
+# #     ports:
+# #       - "8006:8000"  # External port 8006 maps to internal port 8000
+# #     environment:
+# #       - PYTHONUNBUFFERED=1
+# #       - PYTHONDONTWRITEBYTECODE=1
+# #       - vin_env=1
+# #       - DATABASE_ENGINE=django.db.backends.mysql
+# #       - DATABASE_NAME=vin  
+# #       - DATABASE_USER=saitreddy  
+# #       - DATABASE_PASSWORD=sai  
+# #       - DATABASE_HOST=db
+# #       - DATABASE_PORT=3306
+# #     volumes:
+# #       - media_volume:/app/media/
+
+# #   django7:
+# #     build: .
+# #     ports:
+# #       - "8007:8000"  # External port 8007 maps to internal port 8000
+# #     environment:
+# #       - PYTHONUNBUFFERED=1
+# #       - PYTHONDONTWRITEBYTECODE=1
+# #       - vin_env=1
+# #       - DATABASE_ENGINE=django.db.backends.mysql
+# #       - DATABASE_NAME=vin  
+# #       - DATABASE_USER=saitreddy  
+# #       - DATABASE_PASSWORD=sai  
+# #       - DATABASE_HOST=db
+# #       - DATABASE_PORT=3306
+# #     volumes:
+# #       - media_volume:/app/media/
+
+# #   django8:
+# #     build: .
+# #     ports:
+# #       - "8008:8000"  # External port 8008 maps to internal port 8000
+# #     environment:
+# #       - PYTHONUNBUFFERED=1
+# #       - PYTHONDONTWRITEBYTECODE=1
+# #       - vin_env=1
+# #       - DATABASE_ENGINE=django.db.backends.mysql
+# #       - DATABASE_NAME=vin  
+# #       - DATABASE_USER=saitreddy  
+# #       - DATABASE_PASSWORD=sai  
+# #       - DATABASE_HOST=db
+# #       - DATABASE_PORT=3306
+# #     volumes:
+# #       - media_volume:/app/media/
+
+# #   django9:
+# #     build: .
+# #     ports:
+# #       - "8009:8000"  # External port 8009 maps to internal port 8000
+# #     environment:
+# #       - PYTHONUNBUFFERED=1
+# #       - PYTHONDONTWRITEBYTECODE=1
+# #       - vin_env=1
+# #       - DATABASE_ENGINE=django.db.backends.mysql
+# #       - DATABASE_NAME=vin  
+# #       - DATABASE_USER=saitreddy  
+# #       - DATABASE_PASSWORD=sai  
+# #       - DATABASE_HOST=db
+# #       - DATABASE_PORT=3306
+# #     volumes:
+# #       - media_volume:/app/media/
+
+# #   django10:
+# #     build: .
+# #     ports:
+# #       - "8010:8000"  # External port 8010 maps to internal port 8000
+# #     environment:
+# #       - PYTHONUNBUFFERED=1
+# #       - PYTHONDONTWRITEBYTECODE=1
+# #       - vin_env=1
+# #       - DATABASE_ENGINE=django.db.backends.mysql
+# #       - DATABASE_NAME=vin  
+# #       - DATABASE_USER=saitreddy  
+# #       - DATABASE_PASSWORD=sai  
+# #       - DATABASE_HOST=db
+# #       - DATABASE_PORT=3306
+# #     volumes:
+# #       - media_volume:/app/media/
+
+# #   db:
+# #     image: mysql:latest
+# #     environment:
+# #       - MYSQL_ROOT_PASSWORD=sai
+# #       - MYSQL_DATABASE=vin
+# #     volumes:
+# #       - mysql_data:/var/lib/mysql
+# #     ports:
+# #       - "3306:3306"
+
+# #   nginx:
+# #     image: nginx:latest
+# #     ports:
+# #       - "8000:80"  # Nginx listening on port 80 and mapping to 8000
+# #     volumes:
+# #       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+# #     depends_on:
+# #       - django1
+# #       - django2
+# #       - django3
+# #       - django4
+# #       - django5
+# #       - django6
+# #       - django7
+# #       - django8
+# #       - django9
+# #       - django10
+
+# # volumes:
+# #   media_volume:
+# #   mysql_data:
+
+
+
+# version: '3'
+
+# services:
+#   django1:
+#     build: .
+#     ports:
+#       - "8001:8000"
+#     environment:
+#       - PYTHONUNBUFFERED=1
+#       - PYTHONDONTWRITEBYTECODE=1
+#       - vin_env=1
+#       - DATABASE_ENGINE=django.db.backends.mysql
+#       - DATABASE_NAME=vin
+#       - DATABASE_USER=saitreddy
+#       - DATABASE_PASSWORD=sai
+#       - DATABASE_HOST=db
+#       - DATABASE_PORT=3306
+#     volumes:
+#       - media_volume:/app/media/
+#       - static_volume:/app/static/
+
+#   django2:
+#     build: .
+#     ports:
+#       - "8002:8000"
+#     environment:
+#       - PYTHONUNBUFFERED=1
+#       - PYTHONDONTWRITEBYTECODE=1
+#       - vin_env=1
+#       - DATABASE_ENGINE=django.db.backends.mysql
+#       - DATABASE_NAME=vin
+#       - DATABASE_USER=saitreddy
+#       - DATABASE_PASSWORD=sai
+#       - DATABASE_HOST=db
+#       - DATABASE_PORT=3306
+#     volumes:
+#       - media_volume:/app/media/
+#       - static_volume:/app/static/
+
+#   django3:
+#     build: .
+#     ports:
+#       - "8003:8000"
+#     environment:
+#       - PYTHONUNBUFFERED=1
+#       - PYTHONDONTWRITEBYTECODE=1
+#       - vin_env=1
+#       - DATABASE_ENGINE=django.db.backends.mysql
+#       - DATABASE_NAME=vin
+#       - DATABASE_USER=saitreddy
+#       - DATABASE_PASSWORD=sai
+#       - DATABASE_HOST=db
+#       - DATABASE_PORT=3306
+#     volumes:
+#       - media_volume:/app/media/
+#       - static_volume:/app/static/
+
+#   django4:
+#     build: .
+#     ports:
+#       - "8004:8000"
+#     environment:
+#       - PYTHONUNBUFFERED=1
+#       - PYTHONDONTWRITEBYTECODE=1
+#       - vin_env=1
+#       - DATABASE_ENGINE=django.db.backends.mysql
+#       - DATABASE_NAME=vin
+#       - DATABASE_USER=saitreddy
+#       - DATABASE_PASSWORD=sai
+#       - DATABASE_HOST=db
+#       - DATABASE_PORT=3306
+#     volumes:
+#       - media_volume:/app/media/
+#       - static_volume:/app/static/
+
+#   django5:
+#     build: .
+#     ports:
+#       - "8005:8000"
+#     environment:
+#       - PYTHONUNBUFFERED=1
+#       - PYTHONDONTWRITEBYTECODE=1
+#       - vin_env=1
+#       - DATABASE_ENGINE=django.db.backends.mysql
+#       - DATABASE_NAME=vin
+#       - DATABASE_USER=saitreddy
+#       - DATABASE_PASSWORD=sai
+#       - DATABASE_HOST=db
+#       - DATABASE_PORT=3306
+#     volumes:
+#       - media_volume:/app/media/
+#       - static_volume:/app/static/
+
+#   django6:
+#     build: .
+#     ports:
+#       - "8006:8000"
+#     environment:
+#       - PYTHONUNBUFFERED=1
+#       - PYTHONDONTWRITEBYTECODE=1
+#       - vin_env=1
+#       - DATABASE_ENGINE=django.db.backends.mysql
+#       - DATABASE_NAME=vin
+#       - DATABASE_USER=saitreddy
+#       - DATABASE_PASSWORD=sai
+#       - DATABASE_HOST=db
+#       - DATABASE_PORT=3306
+#     volumes:
+#       - media_volume:/app/media/
+#       - static_volume:/app/static/
+
+#   django7:
+#     build: .
+#     ports:
+#       - "8007:8000"
+#     environment:
+#       - PYTHONUNBUFFERED=1
+#       - PYTHONDONTWRITEBYTECODE=1
+#       - vin_env=1
+#       - DATABASE_ENGINE=django.db.backends.mysql
+#       - DATABASE_NAME=vin
+#       - DATABASE_USER=saitreddy
+#       - DATABASE_PASSWORD=sai
+#       - DATABASE_HOST=db
+#       - DATABASE_PORT=3306
+#     volumes:
+#       - media_volume:/app/media/
+#       - static_volume:/app/static/
+
+#   django8:
+#     build: .
+#     ports:
+#       - "8008:8000"
+#     environment:
+#       - PYTHONUNBUFFERED=1
+#       - PYTHONDONTWRITEBYTECODE=1
+#       - vin_env=1
+#       - DATABASE_ENGINE=django.db.backends.mysql
+#       - DATABASE_NAME=vin
+#       - DATABASE_USER=saitreddy
+#       - DATABASE_PASSWORD=sai
+#       - DATABASE_HOST=db
+#       - DATABASE_PORT=3306
+#     volumes:
+#       - media_volume:/app/media/
+#       - static_volume:/app/static/
+
+#   django9:
+#     build: .
+#     ports:
+#       - "8009:8000"
+#     environment:
+#       - PYTHONUNBUFFERED=1
+#       - PYTHONDONTWRITEBYTECODE=1
+#       - vin_env=1
+#       - DATABASE_ENGINE=django.db.backends.mysql
+#       - DATABASE_NAME=vin
+#       - DATABASE_USER=saitreddy
+#       - DATABASE_PASSWORD=sai
+#       - DATABASE_HOST=db
+#       - DATABASE_PORT=3306
+#     volumes:
+#       - media_volume:/app/media/
+#       - static_volume:/app/static/
+
+#   django10:
+#     build: .
+#     ports:
+#       - "8010:8000"
+#     environment:
+#       - PYTHONUNBUFFERED=1
+#       - PYTHONDONTWRITEBYTECODE=1
+#       - vin_env=1
+#       - DATABASE_ENGINE=django.db.backends.mysql
+#       - DATABASE_NAME=vin
+#       - DATABASE_USER=saitreddy
+#       - DATABASE_PASSWORD=sai
+#       - DATABASE_HOST=db
+#       - DATABASE_PORT=3306
+#     volumes:
+#       - media_volume:/app/media/
+#       - static_volume:/app/static/
+
+#   celery:
+#     build: .
+#     command: celery -A vin worker -l info
+#     volumes:
+#       - media_volume:/app/media/
+#     environment:
+#       - CELERY_BROKER_URL=redis://redis:6379/0
+#       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+#       - DATABASE_ENGINE=django.db.backends.mysql
+#       - DATABASE_NAME=vin
+#       - DATABASE_USER=saitreddy
+#       - DATABASE_PASSWORD=sai
+#       - DATABASE_HOST=db
+#       - DATABASE_PORT=3306
+
+#   redis:
+#     image: redis:latest
+
+#   db:
+#     image: mysql:latest
+#     environment:
+#       - MYSQL_ROOT_PASSWORD=sai
+#       - MYSQL_DATABASE=vin
+#     volumes:
+#       - mysql_data:/var/lib/mysql
+#     ports:
+#       - "3306:3306"
+
+#   nginx:
+#     image: nginx:latest
+#     ports:
+#       - "8000:80"
+#     volumes:
+#       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+#       - media_volume:/app/media/
+#       - static_volume:/app/static/
+#     depends_on:
+#       - django1
+#       - django2
+#       - django3
+#       - django4
+#       - django5
+#       - django6
+#       - django7
+#       - django8
+#       - django9
+#       - django10
+
+# volumes:
+#   media_volume:
+#   mysql_data:
+#   static_volume:
+
+
+version: '3.8'  # Update to a supported version, '3' is obsolete
+
+services:
+  django:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - vin_env=1
+      - DATABASE_ENGINE=django.db.backends.mysql
+      - DATABASE_NAME=vin
+      - DATABASE_USER=saitreddy
+      - DATABASE_PASSWORD=sai
+      - DATABASE_HOST=db
+      - DATABASE_PORT=3306
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - media_volume:/app/media/
+      - static_volume:/app/static/
+    depends_on:
+      - db
+      - redis
+      - celery
+      - celery-beat
+
+  celery:
+    build: .
+    command: celery -A vin worker -l info
+    volumes:
+      - media_volume:/app/media/
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_ENGINE=django.db.backends.mysql
+      - DATABASE_NAME=vin
+      - DATABASE_USER=saitreddy
+      - DATABASE_PASSWORD=sai
+      - DATABASE_HOST=db
+      - DATABASE_PORT=3306
+    depends_on:
+      - redis
+      - db
+
+  celery-beat:
+    build: .
+    command: celery -A vin beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - media_volume:/app/media/
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_ENGINE=django.db.backends.mysql
+      - DATABASE_NAME=vin
+      - DATABASE_USER=saitreddy
+      - DATABASE_PASSWORD=sai
+      - DATABASE_HOST=db
+      - DATABASE_PORT=3306
+    depends_on:
+      - redis
+      - db
+
+  redis:
+    image: redis:latest
+
+  db:
+    image: mysql:latest
+    environment:
+      - MYSQL_ROOT_PASSWORD=sai
+      - MYSQL_DATABASE=vin
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "8080:80"  # Map host port 8080 to container port 80
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - media_volume:/app/media/
+      - static_volume:/app/static/
+    depends_on:
+      - django
+
+volumes:
+  media_volume:
+  mysql_data:
+  static_volume:
