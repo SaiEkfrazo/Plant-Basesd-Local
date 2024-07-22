@@ -566,6 +566,154 @@ import re
 from rest_framework import status
 from rest_framework.response import Response
 
+# @method_decorator(csrf_exempt, name='dispatch')
+# class DashboardAPIView(viewsets.ModelViewSet):
+#     queryset = NMBDashboard.objects.all()
+#     # authentication_classes = [JWTAuthentication]
+#     # permission_classes = [IsAuthenticated]
+
+#     MODEL_MAPPING = {
+#         2: NMBDashboard,
+#         3: LiquidPlant,
+#         4: ShampooPlant,
+#     }
+
+#     @swagger_auto_schema(
+#         operation_summary="Create a Record",
+#         operation_description="Upload an image",
+#         request_body=openapi.Schema(
+#             type=openapi.TYPE_OBJECT,
+#             properties={
+#                 'base64_image': openapi.Schema(type=openapi.TYPE_STRING, description='Base64 encoded image'),
+#                 'machines_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='Machine ID'),
+#                 'department_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='Department ID'),
+#                 'product_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='Product ID'),
+#                 'defects_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='Defect ID'),
+#                 'plant_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='Plant ID'),
+#                 'recorded_date_time': openapi.Schema(type=openapi.TYPE_STRING, description='Recorded Date Time'),
+#                 'rca': openapi.Schema(type=openapi.TYPE_STRING, description='RCA')
+#             },
+#             required=['base64_image', 'machines_id', 'department_id', 'product_id', 'defects_id', 'plant_id', 'recorded_date_time']
+#         ),
+#         responses={
+#             201: openapi.Response(description="Record created successfully"),
+#             400: openapi.Response(description="Missing required fields or failed to upload image"),
+#             500: openapi.Response(description="Failed to save data")
+#         }
+#     )
+#     def create(self, request, *args, **kwargs):
+#         base64_image = request.data.get('base64_image', '')
+#         machines_id = request.data.get('machines_id', None)
+#         department_id = request.data.get('department_id', None)
+#         product_id = request.data.get('product_id', None)
+#         defects_id = request.data.get('defects_id', None)
+#         plant_id = request.data.get('plant_id', None)
+#         recorded_date_time = request.data.get('recorded_date_time', None)
+#         rca_field = request.data.get('rca', None)  # Changed from rca_id to rca_field
+
+#         # Validate if all required fields are provided
+#         if not all([base64_image, machines_id, department_id, product_id, defects_id, plant_id, recorded_date_time]):
+#             return Response({'error': 'Missing required fields.'}, status=status.HTTP_400_BAD_REQUEST)
+
+#         # Create a unique file name using the provided fields
+#         file_name = f"{plant_id}_{defects_id}_{recorded_date_time}.png"
+
+#         # Decode the base64 image and save it to the media directory
+#         try:
+#             decoded_image = base64.b64decode(base64_image)
+#             media_path = os.path.join(settings.MEDIA_ROOT, 'images')
+#             os.makedirs(media_path, exist_ok=True)  # Ensure the directory exists
+#             path = os.path.join(media_path, file_name)
+#             with default_storage.open(path, 'wb') as f:
+#                 f.write(decoded_image)
+#         except Exception as e:
+#             return Response({'error': f'Failed to upload image: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+#         image_url = os.path.join(settings.MEDIA_URL, 'images', file_name)
+
+#         try:
+#             # Determine the model to use based on the plant_id
+#             model = self.MODEL_MAPPING.get(plant_id)
+#             if not model:
+#                 return Response({'error': 'Invalid plant_id provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+#             # Create a new record in the appropriate model
+#             record = model.objects.create(
+#                 machines_id=machines_id,
+#                 department_id=department_id,
+#                 product_id=product_id,
+#                 defects_id=defects_id,
+#                 plant_id=plant_id,
+#                 image=image_url,  # Save the local URL in the image field
+#                 recorded_date_time=recorded_date_time
+#             )
+#             print('record',record)
+#             recorded_date = recorded_date_time[:10]
+
+#             machine_parameter = MachineParameters.objects.filter(parameter="Reject Counter").first()
+#             if machine_parameter:
+#                 machine_params_obj, created = MachineParametersGraph.objects.get_or_create(
+#                     recorded_date_time=recorded_date,
+#                     machine_parameter=machine_parameter,
+#                     plant_id=plant_id
+#                 )
+#                 if not created:
+#                     machine_params_obj.params_count = F('params_count') + 1
+#                     machine_params_obj.save()
+#                 else:
+#                     machine_params_obj.params_count = 1
+#                     machine_params_obj.save()
+
+#             # Check if the same defect occurred three times consecutively
+#             last_three_records = model.objects.filter(plant_id=plant_id).order_by('-id')[:3]
+
+#             if last_three_records.count() == 3:
+#                 defects = [record.defects for record in last_three_records]
+#                 if all(defect == last_three_records[0].defects for defect in defects):
+#                     # Get the RCA for the defect
+#                     rca = RootCauseAnalysis.objects.filter(defect_id=defects_id).first()
+#                     if rca:
+#                         notification_text = f"Defect '{rca.defect.name}' has occurred three times consecutively.\n"
+#                         if rca_field and hasattr(rca, rca_field):
+#                             notification_text += f"{rca_field.upper()}: {getattr(rca, rca_field)}\n"
+#                         else:
+#                             if rca.rca1:
+#                                 notification_text += f"RCA1: {rca.rca1}\n"
+#                             if rca.rca2:
+#                                 notification_text += f"RCA2: {rca.rca2}\n"
+#                             if rca.rca3:
+#                                 notification_text += f"RCA3: {rca.rca3}\n"
+#                             if rca.rca4:
+#                                 notification_text += f"RCA4: {rca.rca4}\n"
+#                             if rca.rca5:
+#                                 notification_text += f"RCA5: {rca.rca5}\n"
+#                             if rca.rca6:
+#                                 notification_text += f"RCA6: {rca.rca6}\n"
+#                     else:
+#                         notification_text = f"Defect '{last_three_records[0].defects.name}' has occurred three times consecutively."
+
+#                     DefectNotification.objects.create(
+#                         defect_id=defects_id,
+#                         notification_text=notification_text,
+#                         recorded_date_time=recorded_date_time,
+#                         plant_id=plant_id,
+#                     )
+
+#                     # Send the notification via WebSockets to the specific plant_id room
+#                     channel_layer = get_channel_layer()
+#                     async_to_sync(channel_layer.group_send)(
+#                         f'notifications_{plant_id}',
+#                         {
+#                             'type': 'send_notification',
+#                             'notification': notification_text
+#                         }
+#                     )
+
+#             return Response({'message': 'Record created successfully'}, status=status.HTTP_201_CREATED)
+#         except Exception as e:
+#             return Response({'error': f'Failed to save data: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+#### Amli code only #####
 @method_decorator(csrf_exempt, name='dispatch')
 class DashboardAPIView(viewsets.ModelViewSet):
     queryset = NMBDashboard.objects.all()
@@ -609,7 +757,6 @@ class DashboardAPIView(viewsets.ModelViewSet):
         defects_id = request.data.get('defects_id', None)
         plant_id = request.data.get('plant_id', None)
         recorded_date_time = request.data.get('recorded_date_time', None)
-        rca_field = request.data.get('rca', None)  # Changed from rca_id to rca_field
 
         # Validate if all required fields are provided
         if not all([base64_image, machines_id, department_id, product_id, defects_id, plant_id, recorded_date_time]):
@@ -647,7 +794,7 @@ class DashboardAPIView(viewsets.ModelViewSet):
                 image=image_url,  # Save the local URL in the image field
                 recorded_date_time=recorded_date_time
             )
-            print('record',record)
+            print('record', record)
             recorded_date = recorded_date_time[:10]
 
             machine_parameter = MachineParameters.objects.filter(parameter="Reject Counter").first()
@@ -664,55 +811,28 @@ class DashboardAPIView(viewsets.ModelViewSet):
                     machine_params_obj.params_count = 1
                     machine_params_obj.save()
 
-            # Check if the same defect occurred three times consecutively
-            last_three_records = model.objects.filter(plant_id=plant_id).order_by('-id')[:3]
+            # Send the notification for every defect via WebSockets to the specific plant_id room
+            notification_text = f"Defect '{record.defects.name}' has been recorded."
+            DefectNotification.objects.create(
+                defect_id=defects_id,
+                notification_text=notification_text,
+                recorded_date_time=recorded_date_time,
+                plant_id=plant_id,
+            )
 
-            if last_three_records.count() == 3:
-                defects = [record.defects for record in last_three_records]
-                if all(defect == last_three_records[0].defects for defect in defects):
-                    # Get the RCA for the defect
-                    rca = RootCauseAnalysis.objects.filter(defect_id=defects_id).first()
-                    if rca:
-                        notification_text = f"Defect '{rca.defect.name}' has occurred three times consecutively.\n"
-                        if rca_field and hasattr(rca, rca_field):
-                            notification_text += f"{rca_field.upper()}: {getattr(rca, rca_field)}\n"
-                        else:
-                            if rca.rca1:
-                                notification_text += f"RCA1: {rca.rca1}\n"
-                            if rca.rca2:
-                                notification_text += f"RCA2: {rca.rca2}\n"
-                            if rca.rca3:
-                                notification_text += f"RCA3: {rca.rca3}\n"
-                            if rca.rca4:
-                                notification_text += f"RCA4: {rca.rca4}\n"
-                            if rca.rca5:
-                                notification_text += f"RCA5: {rca.rca5}\n"
-                            if rca.rca6:
-                                notification_text += f"RCA6: {rca.rca6}\n"
-                    else:
-                        notification_text = f"Defect '{last_three_records[0].defects.name}' has occurred three times consecutively."
-
-                    DefectNotification.objects.create(
-                        defect_id=defects_id,
-                        notification_text=notification_text,
-                        recorded_date_time=recorded_date_time,
-                        plant_id=plant_id,
-                    )
-
-                    # Send the notification via WebSockets to the specific plant_id room
-                    channel_layer = get_channel_layer()
-                    async_to_sync(channel_layer.group_send)(
-                        f'notifications_{plant_id}',
-                        {
-                            'type': 'send_notification',
-                            'notification': notification_text
-                        }
-                    )
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'notifications_{plant_id}',
+                {
+                    'type': 'send_notification',
+                    'notification': notification_text
+                }
+            )
 
             return Response({'message': 'Record created successfully'}, status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({'error': f'Failed to save data: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+    
     @swagger_auto_schema(
         manual_parameters=[
             openapi.Parameter('plant_id', openapi.IN_PATH, description="Plant ID", type=openapi.TYPE_INTEGER),
