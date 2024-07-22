@@ -150,7 +150,7 @@ DATABASES = {
            },
     'cloud': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'VIN_LOCAL_PLANT',            # Cloud database name
+        'NAME': 'VIN_LOCAL',            # Cloud database name
         'USER': 'root',                 # Cloud database user
         'PASSWORD': 'AIVolved',         # Cloud database password
         'HOST': '159.65.157.118',       # Cloud database host (replace with IP or domain)
@@ -349,6 +349,10 @@ CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 CELERY_BEAT_SCHEDULE = {
     'sync-data-with-cloud-every-30-minutes': {
         'task': 'dashboard.tasks.sync_data_with_cloud',
+        'schedule': crontab(minute='*/10'),
+    },
+    'sync-machine-parameters-every-10-minutes': {
+        'task': 'dashboard.tasks.sync_machine_parameters',
         'schedule': crontab(minute='*/1'),
     },
 }

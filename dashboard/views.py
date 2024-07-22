@@ -786,12 +786,12 @@ class DashboardAPIView(viewsets.ModelViewSet):
             if from_date_str:
                 from_date = datetime.strptime(from_date_str, '%Y-%m-%d').date()
             else:
-                from_date = datetime.now().date() - timedelta(days=7)  # Default to seven days ago
+                from_date = datetime.now().date() - timedelta(days=7)
 
             if to_date_str:
                 to_date = datetime.strptime(to_date_str, '%Y-%m-%d').date()
             else:
-                to_date = datetime.now().date()  # Default to current date
+                to_date = datetime.now().date()
 
             if from_date > to_date:
                 return Response({"message": "from_date cannot be after to_date."}, status=status.HTTP_400_BAD_REQUEST)
@@ -800,7 +800,6 @@ class DashboardAPIView(viewsets.ModelViewSet):
             return Response({"message": "Invalid date format provided. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # Prepare filter criteria
             filter_criteria = {'plant_id': plant_id}
 
             if machine_id:
@@ -815,41 +814,38 @@ class DashboardAPIView(viewsets.ModelViewSet):
             if defect_id:
                 filter_criteria['defects__id'] = defect_id
 
-            # Query all records from the model with applied filters
             queryset = model.objects.filter(**filter_criteria)
 
-            # Initialize a defaultdict for response data
             response_data = defaultdict(lambda: defaultdict(int))
+            products_set = set()
 
-            # Iterate through the queryset
             for record in queryset:
-                # Check if recorded_date_time is not empty or null
                 if not record.recorded_date_time:
                     continue
 
-                # Parse the datetime from the recorded_date_time char field
                 try:
                     datetime_obj = datetime.strptime(record.recorded_date_time, '%Y-%m-%dT%H:%M:%S')
                     date = datetime_obj.date()
                 except ValueError:
-                    continue  # Skip records with invalid datetime format
+                    continue
 
-                # Filter records within the specified date range
                 if from_date <= date <= to_date:
-                    # Get defect name from Defects model using defects_id
                     try:
                         defect = Defects.objects.get(id=record.defects_id)
                         defect_name = defect.name
                     except Defects.DoesNotExist:
                         continue
 
-                    # Count the defects
-                    response_data[date][defect_name] += 1
+                    product_name = record.product.name
+                    products_set.add(product_name)
+                    response_data[str(date)][defect_name] += 1
 
-            # Convert defaultdict to a regular dict before returning
-            response_data = {str(date): dict(defects) for date, defects in response_data.items()}
+            products_list = list(products_set)
 
-            return Response(response_data, status=status.HTTP_200_OK)
+            response_structure = dict(response_data)
+            response_structure['active_products'] = products_list
+
+            return Response(response_structure, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"message": f"Failed to retrieve records: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
@@ -1093,7 +1089,6 @@ class AISmartAPIView(viewsets.ViewSet):
         },
         operation_summary="AI Smart View"
     )
-
     def list(self, request):
         plant_id = request.query_params.get('plant_id')
         defect_id = request.query_params.get('defect_id')
@@ -1111,8 +1106,19 @@ class AISmartAPIView(viewsets.ViewSet):
         if not model:
             return Response({'error': 'Invalid plant_id provided.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        records = model.objects.filter(defects_id=defect_id).values('image', 'recorded_date_time')
-        return Response({"results":records}, status=status.HTTP_200_OK)
+        records = model.objects.filter(defects_id=defect_id).select_related('machines').order_by('-recorded_date_time').values('image', 'recorded_date_time', 'machines__name')
+
+        # Rename 'machines__name' to 'machine_name' in the result
+        results = [
+            {
+                'image': record['image'],
+                'recorded_date_time': record['recorded_date_time'],
+                'machine_name': record['machines__name']
+            }
+            for record in records
+        ]
+
+        return Response({"results": results}, status=status.HTTP_200_OK)
     
 
 class MachineTemperaturesAPIView(APIView):

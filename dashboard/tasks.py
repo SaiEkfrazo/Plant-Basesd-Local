@@ -245,3 +245,54 @@ def send_daily_defects_report():
 
     except Exception as e:
         print(f"Error sending daily defects report. Error: {e}")
+
+
+
+##### tasks for syncing the machine parameteres graph ########
+
+# tasks.py
+
+from django.db import transaction
+from datetime import datetime
+
+@shared_task
+def sync_machine_parameters():
+    local_records = MachineParametersGraph.objects.using('default').all()
+    records_to_update = []
+    records_to_create = []
+
+    for record in local_records:
+        # Extract date part from recorded_date_time
+        date_part = record.recorded_date_time.split('T')[0]
+
+        with transaction.atomic(using='cloud'):
+            # Check if the record exists in the global database
+            global_record = MachineParametersGraph.objects.using('cloud').filter(
+                recorded_date_time__startswith=date_part,
+                machine_parameter=record.machine_parameter,
+                plant=record.plant
+            ).first()
+
+            if global_record:
+                # Update the existing record
+                global_record.params_count = record.params_count
+                records_to_update.append(global_record)
+            else:
+                # Create a new record
+                new_global_record = MachineParametersGraph(
+                    machine_parameter=record.machine_parameter,
+                    params_count=record.params_count,
+                    recorded_date_time=record.recorded_date_time,
+                    plant=record.plant
+                )
+                records_to_create.append(new_global_record)
+
+    # Perform bulk update
+    if records_to_update:
+        MachineParametersGraph.objects.using('cloud').bulk_update(records_to_update, ['params_count'])
+        print(f'Updated {len(records_to_update)} records in global database')
+
+    # Perform bulk create
+    if records_to_create:
+        MachineParametersGraph.objects.using('cloud').bulk_create(records_to_create)
+        print(f'Created {len(records_to_create)} new records in global database')
