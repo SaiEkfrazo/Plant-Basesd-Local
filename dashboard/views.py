@@ -40,6 +40,9 @@ from django.db.models import Count
 from datetime import timedelta, date
 # Create your views here.
 
+CACHE_TIMEOUT = 300  # Cache timeout in seconds (1 minute)
+CACHE_KEY = 'dashboard_data'
+
 
 # import os
 # from django.conf import settings
@@ -565,155 +568,11 @@ import uuid
 import re
 from rest_framework import status
 from rest_framework.response import Response
+from django.core.cache import cache
+from datetime import datetime, timedelta
+from collections import defaultdict
 
-# @method_decorator(csrf_exempt, name='dispatch')
-# class DashboardAPIView(viewsets.ModelViewSet):
-#     queryset = NMBDashboard.objects.all()
-#     # authentication_classes = [JWTAuthentication]
-#     # permission_classes = [IsAuthenticated]
 
-#     MODEL_MAPPING = {
-#         2: NMBDashboard,
-#         3: LiquidPlant,
-#         4: ShampooPlant,
-#     }
-
-#     @swagger_auto_schema(
-#         operation_summary="Create a Record",
-#         operation_description="Upload an image",
-#         request_body=openapi.Schema(
-#             type=openapi.TYPE_OBJECT,
-#             properties={
-#                 'base64_image': openapi.Schema(type=openapi.TYPE_STRING, description='Base64 encoded image'),
-#                 'machines_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='Machine ID'),
-#                 'department_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='Department ID'),
-#                 'product_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='Product ID'),
-#                 'defects_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='Defect ID'),
-#                 'plant_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='Plant ID'),
-#                 'recorded_date_time': openapi.Schema(type=openapi.TYPE_STRING, description='Recorded Date Time'),
-#                 'rca': openapi.Schema(type=openapi.TYPE_STRING, description='RCA')
-#             },
-#             required=['base64_image', 'machines_id', 'department_id', 'product_id', 'defects_id', 'plant_id', 'recorded_date_time']
-#         ),
-#         responses={
-#             201: openapi.Response(description="Record created successfully"),
-#             400: openapi.Response(description="Missing required fields or failed to upload image"),
-#             500: openapi.Response(description="Failed to save data")
-#         }
-#     )
-#     def create(self, request, *args, **kwargs):
-#         base64_image = request.data.get('base64_image', '')
-#         machines_id = request.data.get('machines_id', None)
-#         department_id = request.data.get('department_id', None)
-#         product_id = request.data.get('product_id', None)
-#         defects_id = request.data.get('defects_id', None)
-#         plant_id = request.data.get('plant_id', None)
-#         recorded_date_time = request.data.get('recorded_date_time', None)
-#         rca_field = request.data.get('rca', None)  # Changed from rca_id to rca_field
-
-#         # Validate if all required fields are provided
-#         if not all([base64_image, machines_id, department_id, product_id, defects_id, plant_id, recorded_date_time]):
-#             return Response({'error': 'Missing required fields.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#         # Create a unique file name using the provided fields
-#         file_name = f"{plant_id}_{defects_id}_{recorded_date_time}.png"
-
-#         # Decode the base64 image and save it to the media directory
-#         try:
-#             decoded_image = base64.b64decode(base64_image)
-#             media_path = os.path.join(settings.MEDIA_ROOT, 'images')
-#             os.makedirs(media_path, exist_ok=True)  # Ensure the directory exists
-#             path = os.path.join(media_path, file_name)
-#             with default_storage.open(path, 'wb') as f:
-#                 f.write(decoded_image)
-#         except Exception as e:
-#             return Response({'error': f'Failed to upload image: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
-
-#         image_url = os.path.join(settings.MEDIA_URL, 'images', file_name)
-
-#         try:
-#             # Determine the model to use based on the plant_id
-#             model = self.MODEL_MAPPING.get(plant_id)
-#             if not model:
-#                 return Response({'error': 'Invalid plant_id provided.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#             # Create a new record in the appropriate model
-#             record = model.objects.create(
-#                 machines_id=machines_id,
-#                 department_id=department_id,
-#                 product_id=product_id,
-#                 defects_id=defects_id,
-#                 plant_id=plant_id,
-#                 image=image_url,  # Save the local URL in the image field
-#                 recorded_date_time=recorded_date_time
-#             )
-#             print('record',record)
-#             recorded_date = recorded_date_time[:10]
-
-#             machine_parameter = MachineParameters.objects.filter(parameter="Reject Counter").first()
-#             if machine_parameter:
-#                 machine_params_obj, created = MachineParametersGraph.objects.get_or_create(
-#                     recorded_date_time=recorded_date,
-#                     machine_parameter=machine_parameter,
-#                     plant_id=plant_id
-#                 )
-#                 if not created:
-#                     machine_params_obj.params_count = F('params_count') + 1
-#                     machine_params_obj.save()
-#                 else:
-#                     machine_params_obj.params_count = 1
-#                     machine_params_obj.save()
-
-#             # Check if the same defect occurred three times consecutively
-#             last_three_records = model.objects.filter(plant_id=plant_id).order_by('-id')[:3]
-
-#             if last_three_records.count() == 3:
-#                 defects = [record.defects for record in last_three_records]
-#                 if all(defect == last_three_records[0].defects for defect in defects):
-#                     # Get the RCA for the defect
-#                     rca = RootCauseAnalysis.objects.filter(defect_id=defects_id).first()
-#                     if rca:
-#                         notification_text = f"Defect '{rca.defect.name}' has occurred three times consecutively.\n"
-#                         if rca_field and hasattr(rca, rca_field):
-#                             notification_text += f"{rca_field.upper()}: {getattr(rca, rca_field)}\n"
-#                         else:
-#                             if rca.rca1:
-#                                 notification_text += f"RCA1: {rca.rca1}\n"
-#                             if rca.rca2:
-#                                 notification_text += f"RCA2: {rca.rca2}\n"
-#                             if rca.rca3:
-#                                 notification_text += f"RCA3: {rca.rca3}\n"
-#                             if rca.rca4:
-#                                 notification_text += f"RCA4: {rca.rca4}\n"
-#                             if rca.rca5:
-#                                 notification_text += f"RCA5: {rca.rca5}\n"
-#                             if rca.rca6:
-#                                 notification_text += f"RCA6: {rca.rca6}\n"
-#                     else:
-#                         notification_text = f"Defect '{last_three_records[0].defects.name}' has occurred three times consecutively."
-
-#                     DefectNotification.objects.create(
-#                         defect_id=defects_id,
-#                         notification_text=notification_text,
-#                         recorded_date_time=recorded_date_time,
-#                         plant_id=plant_id,
-#                     )
-
-#                     # Send the notification via WebSockets to the specific plant_id room
-#                     channel_layer = get_channel_layer()
-#                     async_to_sync(channel_layer.group_send)(
-#                         f'notifications_{plant_id}',
-#                         {
-#                             'type': 'send_notification',
-#                             'notification': notification_text
-#                         }
-#                     )
-
-#             return Response({'message': 'Record created successfully'}, status=status.HTTP_201_CREATED)
-#         except Exception as e:
-#             return Response({'error': f'Failed to save data: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-#### Amli code only #####
 @method_decorator(csrf_exempt, name='dispatch')
 class DashboardAPIView(viewsets.ModelViewSet):
     queryset = NMBDashboard.objects.all()
@@ -757,6 +616,7 @@ class DashboardAPIView(viewsets.ModelViewSet):
         defects_id = request.data.get('defects_id', None)
         plant_id = request.data.get('plant_id', None)
         recorded_date_time = request.data.get('recorded_date_time', None)
+        rca_field = request.data.get('rca', None)  # Changed from rca_id to rca_field
 
         # Validate if all required fields are provided
         if not all([base64_image, machines_id, department_id, product_id, defects_id, plant_id, recorded_date_time]):
@@ -794,8 +654,24 @@ class DashboardAPIView(viewsets.ModelViewSet):
                 image=image_url,  # Save the local URL in the image field
                 recorded_date_time=recorded_date_time
             )
-            print('record', record)
+            print('record',record)
             recorded_date = recorded_date_time[:10]
+
+            dashboard_entry, created = Dashboard.objects.get_or_create(
+                machines_id=machines_id,
+                department_id=department_id,
+                product_id=product_id,
+                defects_id=defects_id,
+                plant_id=plant_id,
+                recorded_date_time=recorded_date_time
+            )
+
+            if not created:
+                dashboard_entry.count += 1
+                dashboard_entry.save()
+            else:
+                dashboard_entry.count = 1
+                dashboard_entry.save()
 
             machine_parameter = MachineParameters.objects.filter(parameter="Reject Counter").first()
             if machine_parameter:
@@ -811,57 +687,54 @@ class DashboardAPIView(viewsets.ModelViewSet):
                     machine_params_obj.params_count = 1
                     machine_params_obj.save()
 
-            # Send the notification for every defect via WebSockets to the specific plant_id room
-            notification_text = f"Defect '{record.defects.name}' has been recorded."
-            DefectNotification.objects.create(
-                defect_id=defects_id,
-                notification_text=notification_text,
-                recorded_date_time=recorded_date_time,
-                plant_id=plant_id,
-            )
+            # Check if the same defect occurred three times consecutively
+            last_three_records = model.objects.filter(plant_id=plant_id).order_by('-id')[:3]
 
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                f'notifications_{plant_id}',
-                {
-                    'type': 'send_notification',
-                    'notification': notification_text
-                }
-            )
+            if last_three_records.count() == 3:
+                defects = [record.defects for record in last_three_records]
+                if all(defect == last_three_records[0].defects for defect in defects):
+                    # Get the RCA for the defect
+                    rca = RootCauseAnalysis.objects.filter(defect_id=defects_id).first()
+                    if rca:
+                        notification_text = f"Defect '{rca.defect.name}' has occurred three times consecutively.\n"
+                        if rca_field and hasattr(rca, rca_field):
+                            notification_text += f"{rca_field.upper()}: {getattr(rca, rca_field)}\n"
+                        else:
+                            if rca.rca1:
+                                notification_text += f"RCA1: {rca.rca1}\n"
+                            if rca.rca2:
+                                notification_text += f"RCA2: {rca.rca2}\n"
+                            if rca.rca3:
+                                notification_text += f"RCA3: {rca.rca3}\n"
+                            if rca.rca4:
+                                notification_text += f"RCA4: {rca.rca4}\n"
+                            if rca.rca5:
+                                notification_text += f"RCA5: {rca.rca5}\n"
+                            if rca.rca6:
+                                notification_text += f"RCA6: {rca.rca6}\n"
+                    else:
+                        notification_text = f"Defect '{last_three_records[0].defects.name}' has occurred three times consecutively."
+
+                    DefectNotification.objects.create(
+                        defect_id=defects_id,
+                        notification_text=notification_text,
+                        recorded_date_time=recorded_date_time,
+                        plant_id=plant_id,
+                    )
+
+                    # Send the notification via WebSockets to the specific plant_id room
+                    channel_layer = get_channel_layer()
+                    async_to_sync(channel_layer.group_send)(
+                        f'notifications_{plant_id}',
+                        {
+                            'type': 'send_notification',
+                            'notification': notification_text
+                        }
+                    )
 
             return Response({'message': 'Record created successfully'}, status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({'error': f'Failed to save data: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    @swagger_auto_schema(
-        manual_parameters=[
-            openapi.Parameter('plant_id', openapi.IN_PATH, description="Plant ID", type=openapi.TYPE_INTEGER),
-            openapi.Parameter('pk', openapi.IN_PATH, description="Primary Key", type=openapi.TYPE_INTEGER),
-        ],
-        operation_description="Delete a record and its associated image",
-        responses={
-            204: openapi.Response(description="Record and image deleted successfully"),
-            404: openapi.Response(description="Record not found"),
-            500: openapi.Response(description="Failed to delete record")
-        }
-    )
-    def destroy(self, request, plant_id=None, pk=None, *args, **kwargs):
-        try:
-            print('in if')
-            model = self.MODEL_MAPPING.get(plant_id)
-            if not model:
-                return Response({'error': 'Invalid plant_id provided.'}, status=status.HTTP_400_BAD_REQUEST)
-
-            record = model.objects.get(pk=pk)
-            delete_image_from_space(record.image)
-            record.delete()
-            return Response({'message': 'Record and image deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
-        except model.DoesNotExist:
-            return Response({'message': 'Record not found'}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({'message': f'Failed to delete record: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-
     @swagger_auto_schema(
         manual_parameters=[
             openapi.Parameter('plant_id', openapi.IN_QUERY, description="Plant ID", type=openapi.TYPE_INTEGER),
@@ -882,14 +755,14 @@ class DashboardAPIView(viewsets.ModelViewSet):
         operation_summary="Dashboard Data"
     )
     def list(self, request, *args, **kwargs):
-        plant_id = request.query_params.get('plant_id', None)
-        from_date_str = request.query_params.get('from_date', None)
-        to_date_str = request.query_params.get('to_date', None)
-        machine_id = request.query_params.get('machine_id', None)
-        department_id = request.query_params.get('department_id', None)
-        product_id = request.query_params.get('product_id', None)
-        defect_id = request.query_params.get('defect_id', None)
-    
+        plant_id = request.query_params.get('plant_id')
+        from_date_str = request.query_params.get('from_date')
+        to_date_str = request.query_params.get('to_date')
+        machine_id = request.query_params.get('machine_id')
+        department_id = request.query_params.get('department_id')
+        product_id = request.query_params.get('product_id')
+        defect_id = request.query_params.get('defect_id')
+
         if not plant_id:
             return Response({"message": "plant_id is required."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -898,185 +771,71 @@ class DashboardAPIView(viewsets.ModelViewSet):
         except ValueError:
             return Response({"message": "Invalid plant_id provided."}, status=status.HTTP_400_BAD_REQUEST)
 
-        model = self.MODEL_MAPPING.get(plant_id)
-        if not model:
-            return Response({"message": "Invalid plant_id provided."}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            if from_date_str:
-                from_date = datetime.strptime(from_date_str, '%Y-%m-%d').date()
-            else:
-                from_date = datetime.now().date() - timedelta(days=7)
-
-            if to_date_str:
-                to_date = datetime.strptime(to_date_str, '%Y-%m-%d').date()
-            else:
-                to_date = datetime.now().date()
-
-            if from_date > to_date:
+            from_date = datetime.strptime(from_date_str, '%Y-%m-%d').date() if from_date_str else None
+            to_date = datetime.strptime(to_date_str, '%Y-%m-%d').date() if to_date_str else None
+            if from_date and to_date and from_date > to_date:
                 return Response({"message": "from_date cannot be after to_date."}, status=status.HTTP_400_BAD_REQUEST)
-
         except ValueError:
             return Response({"message": "Invalid date format provided. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            filter_criteria = {'plant_id': plant_id}
+        # Check if any filters are applied
+        filters_applied = bool(machine_id or department_id or product_id or defect_id or from_date or to_date)
 
-            if machine_id:
-                filter_criteria['machines__id'] = machine_id
+        if not filters_applied:
+            cache_key = f'{CACHE_KEY}'
+            cached_data = cache.get(cache_key)
+            print('cached data',cached_data)
+            if cached_data:
+                return Response(cached_data, status=status.HTTP_200_OK)
 
-            if department_id:
-                filter_criteria['department__id'] = department_id
+        filter_criteria = {'plant_id': plant_id}
+        if machine_id:
+            filter_criteria['machines_id'] = machine_id
+        if department_id:
+            filter_criteria['department_id'] = department_id
+        if product_id:
+            filter_criteria['product_id'] = product_id
+        if defect_id:
+            filter_criteria['defects_id'] = defect_id
 
-            if product_id:
-                filter_criteria['product__id'] = product_id
+        queryset = Dashboard.objects.filter(**filter_criteria)
+        response_data = {}
+        products_set = set()
 
-            if defect_id:
-                filter_criteria['defects__id'] = defect_id
+        for record in queryset:
+            if not record.recorded_date_time:
+                continue
 
-            queryset = model.objects.filter(**filter_criteria)
+            try:
+                record_date_str = record.recorded_date_time.split('T')[0]
+                date = datetime.strptime(record_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                continue
 
-            response_data = defaultdict(lambda: defaultdict(int))
-            products_set = set()
-
-            for record in queryset:
-                if not record.recorded_date_time:
-                    continue
-
+            if (not from_date or from_date <= date) and (not to_date or date <= to_date):
                 try:
-                    datetime_obj = datetime.strptime(record.recorded_date_time, '%Y-%m-%dT%H:%M:%S')
-                    date = datetime_obj.date()
-                except ValueError:
+                    defect = Defects.objects.get(id=record.defects_id)
+                    defect_name = defect.name
+                except Defects.DoesNotExist:
                     continue
 
-                if from_date <= date <= to_date:
-                    try:
-                        defect = Defects.objects.get(id=record.defects_id)
-                        defect_name = defect.name
-                    except Defects.DoesNotExist:
-                        continue
+                product_name = record.product.name
+                products_set.add(product_name)
+                if str(date) not in response_data:
+                    response_data[str(date)] = {}
+                if defect_name not in response_data[str(date)]:
+                    response_data[str(date)][defect_name] = 0
 
-                    product_name = record.product.name
-                    products_set.add(product_name)
-                    response_data[str(date)][defect_name] += 1
+                response_data[str(date)][defect_name] += record.count
 
-            products_list = list(products_set)
+        products_list = list(products_set)
+        response_data['active_products'] = products_list
 
-            response_structure = dict(response_data)
-            response_structure['active_products'] = products_list
+        if not filters_applied:
+            cache.set(cache_key, response_data, timeout=CACHE_TIMEOUT)
 
-            return Response(response_structure, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"message": f"Failed to retrieve records: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-
-# Now having the reports data according to the plant id 
-
-# class ReportsAPIView(viewsets.ViewSet):
-#     # authentication_classes = [JWTAuthentication]
-#     # permission_classes = [IsAuthenticated]
-
-#     MODEL_MAPPING = {
-#         2: NMBDashboard,
-#         3: LiquidPlant,
-#         4: ShampooPlant,
-#     }
-
-#     @swagger_auto_schema(
-#         manual_parameters=[
-#             openapi.Parameter('plant_id', openapi.IN_QUERY, description="Plant ID", type=openapi.TYPE_INTEGER),
-#             openapi.Parameter('from_date', openapi.IN_QUERY, description="Start date (YYYY-MM-DD)", type=openapi.TYPE_STRING),
-#             openapi.Parameter('to_date', openapi.IN_QUERY, description="End date (YYYY-MM-DD)", type=openapi.TYPE_STRING),
-#             openapi.Parameter('machine_id', openapi.IN_QUERY, description="Machine ID", type=openapi.TYPE_INTEGER),
-#             openapi.Parameter('department_id', openapi.IN_QUERY, description="Department ID", type=openapi.TYPE_INTEGER),
-#             openapi.Parameter('product_id', openapi.IN_QUERY, description="Product ID", type=openapi.TYPE_INTEGER),
-#             openapi.Parameter('defect_id', openapi.IN_QUERY, description="Defect ID", type=openapi.TYPE_INTEGER),
-#         ],
-#         operation_description="List defect counts for a specific plant within the specified date range and filters",
-#         responses={
-#             200: openapi.Response(description="Records retrieved successfully"),
-#             400: openapi.Response(description="Missing or invalid parameters"),
-#             404: openapi.Response(description="Plant not found"),
-#             500: openapi.Response(description="Failed to retrieve records")
-#         },
-#         operation_summary="Reports Data"
-#     )
-#     def list(self, request, *args, **kwargs):
-#         plant_id = request.query_params.get('plant_id', None)
-#         from_date_str = request.query_params.get('from_date', None)
-#         to_date_str = request.query_params.get('to_date', None)
-#         machine_id = request.query_params.get('machine_id', None)
-#         department_id = request.query_params.get('department_id', None)
-#         product_id = request.query_params.get('product_id', None)
-#         defect_id = request.query_params.get('defect_id', None)
-    
-#         if not plant_id:
-#             return Response({"message": "plant_id is required."}, status=status.HTTP_400_BAD_REQUEST)
-
-#         try:
-#             plant_id = int(plant_id)
-#         except ValueError:
-#             return Response({"message": "Invalid plant_id provided."}, status=status.HTTP_400_BAD_REQUEST)
-
-#         model = self.MODEL_MAPPING.get(plant_id)
-#         if not model:
-#             return Response({"message": "Invalid plant_id provided."}, status=status.HTTP_400_BAD_REQUEST)
-
-#         try:
-#             # Prepare filter criteria
-#             filter_criteria = {}
-
-#             if machine_id:
-#                 filter_criteria['machines__id'] = machine_id
-
-#             if department_id:
-#                 filter_criteria['department__id'] = department_id
-
-#             if product_id:
-#                 filter_criteria['product__id'] = product_id
-
-#             if defect_id:
-#                 filter_criteria['defects__id'] = defect_id
-
-#             # Apply date range filters
-#             queryset = model.objects.filter(**filter_criteria)
-
-#             if from_date_str:
-#                 queryset = queryset.filter(recorded_date_time__gte=f"{from_date_str}T00:00:00")
-
-#             if to_date_str:
-#                 queryset = queryset.filter(recorded_date_time__lte=f"{to_date_str}T23:59:59")
-
-#             # Order by recorded_date_time in descending order to get latest records first
-#             queryset = queryset.order_by('-recorded_date_time')
-
-#             # Serialize queryset to return all fields
-#             response_data = []
-#             for record in queryset:
-#                 # Fetch related names
-#                 machine_name = Machines.objects.get(id=record.machines_id).name if record.machines_id else None
-#                 department_name = Department.objects.get(id=record.department_id).name if record.department_id else None
-#                 product_name = Products.objects.get(id=record.product_id).name if record.product_id else None
-#                 defect_name = Defects.objects.get(id=record.defects_id).name if record.defects_id else None
-#                 plant_name = model.__name__
-
-#                 serialized_data = {
-#                     'id': record.id,
-#                     'machine': machine_name,
-#                     'department': department_name,
-#                     'product': product_name,
-#                     'defect': defect_name,
-#                     'image': record.image,
-#                     'plant': plant_name,
-#                     'recorded_date_time': record.recorded_date_time,
-#                 }
-#                 response_data.append(serialized_data)
-
-#             return Response({'results': response_data}, status=status.HTTP_200_OK)
-
-#         except Exception as e:
-#             return Response({"message": f"Failed to retrieve records: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+        return Response(response_data, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ReportsAPIView(viewsets.ViewSet):
@@ -1194,6 +953,7 @@ class AISmartAPIView(viewsets.ViewSet):
         3: LiquidPlant,
         4: ShampooPlant,
     }
+    pagination_class = CustomPagination
 
     @swagger_auto_schema(
         manual_parameters=[
@@ -1226,8 +986,12 @@ class AISmartAPIView(viewsets.ViewSet):
         if not model:
             return Response({'error': 'Invalid plant_id provided.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        records = model.objects.filter(defects_id=defect_id).select_related('machines').order_by('-recorded_date_time').values('image', 'recorded_date_time', 'machines__name')
+        queryset = model.objects.filter(defects_id=defect_id).select_related('machines').order_by('-recorded_date_time').values('image', 'recorded_date_time', 'machines__name')
 
+        # Apply pagination
+        paginator = CustomPagination()
+        paginated_queryset = paginator.paginate_queryset(queryset, request)
+        
         # Rename 'machines__name' to 'machine_name' in the result
         results = [
             {
@@ -1235,10 +999,10 @@ class AISmartAPIView(viewsets.ViewSet):
                 'recorded_date_time': record['recorded_date_time'],
                 'machine_name': record['machines__name']
             }
-            for record in records
+            for record in paginated_queryset
         ]
 
-        return Response({"results": results}, status=status.HTTP_200_OK)
+        return paginator.get_paginated_response(results)
     
 
 class MachineTemperaturesAPIView(APIView):
@@ -1663,3 +1427,5 @@ class DefectVSProduction(viewsets.ViewSet):
 
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+

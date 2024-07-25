@@ -157,4 +157,19 @@ class SystemStatus(models.Model):
 
 
 
-    
+class Dashboard(models.Model):
+    class Meta:
+        db_table = 'Dashboard'
+    machines = models.ForeignKey(Machines, on_delete=models.CASCADE)
+    department = models.ForeignKey(Department, on_delete=models.CASCADE)
+    product = models.ForeignKey(Products, on_delete=models.CASCADE)
+    defects = models.ForeignKey(Defects, on_delete=models.CASCADE)
+    plant = models.ForeignKey(Plant, on_delete=models.CASCADE)
+    recorded_date_time = models.CharField(max_length=255)  # Store date and time as string
+    count = models.BigIntegerField(default=0)  # Count of occurrences
+
+    class Meta:
+        db_table = 'Dashboard'
+        indexes = [
+            models.Index(fields=['recorded_date_time']),                        # Index on recorded_date_time
+        ]

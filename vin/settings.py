@@ -131,23 +131,23 @@ SWAGGER_SETTINGS = {
 # settings for local mysql 
 
 DATABASES = {
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.mysql',
-    #     'NAME': 'vin',                  # Local database name
-    #     'USER': 'saitreddy',            # Local database user
-    #     'PASSWORD': 'sai',              # Local database password
-    #     'HOST': 'localhost',            # Local database host
-    #     'PORT': '3306',                 # Local database port
-    # },
-    'default':
-           {
-           'ENGINE': 'django.db.backends.mysql',
-           'NAME': 'vin',
-           'USER': 'root',  
-           'PASSWORD': 'sai',  
-           'HOST': 'db',  
-           'PORT': '3306',    
-           },
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'vin',                  # Local database name
+        'USER': 'saitreddy',            # Local database user
+        'PASSWORD': 'sai',              # Local database password
+        'HOST': 'localhost',            # Local database host
+        'PORT': '3306',                 # Local database port
+    },
+    # 'default':
+    #        {
+    #        'ENGINE': 'django.db.backends.mysql',
+    #        'NAME': 'vin',
+    #        'USER': 'root',  
+    #        'PASSWORD': 'sai',  
+    #        'HOST': 'db',  
+    #        'PORT': '3306',    
+    #        },
     'cloud': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'VIN_LOCAL',            # Cloud database name
@@ -217,6 +217,18 @@ REST_FRAMEWORK = {
         # Add any other authentication classes you use
     ),
     
+}
+
+##### for cacheing settings ##### 
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/1',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    }
 }
 
 
@@ -295,13 +307,13 @@ USE_TZ = True
 
 # media files settings for docker 
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = '/app/media/'
+# MEDIA_URL = '/media/'
+# MEDIA_ROOT = '/app/media/'
 
 # media files settings for local 
 
-# MEDIA_URL = '/media/'
-# MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 PORT = '8000'
 # Static files (CSS, JavaScript, Images)
@@ -347,13 +359,17 @@ CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 
 # Celery Beat Scheduler
 CELERY_BEAT_SCHEDULE = {
-    'sync-data-with-cloud-every-30-minutes': {
-        'task': 'dashboard.tasks.sync_data_with_cloud',
-        'schedule': crontab(minute='*/10'),
-    },
-    'sync-machine-parameters-every-10-minutes': {
-        'task': 'dashboard.tasks.sync_machine_parameters',
-        'schedule': crontab(minute='*/1'),
+    # 'sync-data-with-cloud-every-30-minutes': {
+    #     'task': 'dashboard.tasks.sync_data_with_cloud',
+    #     'schedule': crontab(minute='*/10'),
+    # },
+    # 'sync-machine-parameters-every-10-minutes': {
+    #     'task': 'dashboard.tasks.sync_machine_parameters',
+    #     'schedule': crontab(minute='*/1'),
+    # },
+    'cache-dashboard-data-every-minute': {
+        'task': 'dashboard.tasks.cache_dashboard_data',
+        'schedule': crontab(minute='*/1'),  # Run every minute
     },
 }
 
