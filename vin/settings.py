@@ -147,15 +147,15 @@ DATABASES = {
            'PASSWORD': 'sai',  
            'HOST': 'db',  
            'PORT': '3306',    
-           },
-    'cloud': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'VIN_LOCAL',            # Cloud database name
-        'USER': 'root',                 # Cloud database user
-        'PASSWORD': 'AIVolved',         # Cloud database password
-        'HOST': '159.65.157.118',       # Cloud database host (replace with IP or domain)
-        'PORT': '3306',                 # Cloud database port
-    },
+           }
+    # 'cloud': {
+    #     'ENGINE': 'django.db.backends.mysql',
+    #     'NAME': 'VIN_LOCAL',            # Cloud database name
+    #     'USER': 'root',                 # Cloud database user
+    #     'PASSWORD': 'AIVolved',         # Cloud database password
+    #     'HOST': '159.65.157.118',       # Cloud database host (replace with IP or domain)
+    #     'PORT': '3306',                 # Cloud database port
+    # },
 }
 
 

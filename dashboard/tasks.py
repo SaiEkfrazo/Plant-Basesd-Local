@@ -301,6 +301,77 @@ def sync_machine_parameters():
         print(f'Created {len(records_to_create)} new records in global database')
 
 
+# import logging
+# from django.core.cache import cache
+# from datetime import datetime, timedelta
+# from .models import Dashboard, Defects  # Ensure these imports are correct
+# from collections import OrderedDict
+# from celery import shared_task
+
+# logger = logging.getLogger(__name__)
+
+# CACHE_KEY = 'dashboard_data'  # Define your cache key
+# CACHE_TIMEOUT = 60 * 60  # Cache timeout in seconds (e.g., 1 hour)
+# PLANT_ID = 2  # Plant ID to cache data for
+
+# @shared_task
+# def cache_dashboard_data():
+#     now = datetime.utcnow()
+#     from_date = now - timedelta(days=7)
+#     to_date = now
+
+#     # Convert datetime to string for easier comparison
+#     from_date_str = from_date.strftime('%Y-%m-%d')
+#     to_date_str = to_date.strftime('%Y-%m-%d')
+
+#     # Filter queryset by plant_id
+#     queryset = Dashboard.objects.filter(plant_id=PLANT_ID, recorded_date_time__contains='T')  # Adjust filter as needed
+#     print('queryset',queryset)
+#     response_data = {}
+#     products_set = set()
+
+#     for record in queryset:
+#         if not record.recorded_date_time:
+#             continue
+
+#         try:
+#             # Extract and parse the date part from the string
+#             record_date_str = record.recorded_date_time.split('T')[0]  # Extract date part
+#             date = datetime.strptime(record_date_str, '%Y-%m-%d').date()
+#         except ValueError:
+#             continue
+
+#         if from_date.date() <= date <= to_date.date():
+#             try:
+#                 defect = Defects.objects.get(id=record.defects_id)
+#                 defect_name = defect.name
+#             except Defects.DoesNotExist:
+#                 continue
+
+#             product_name = record.product.name
+#             products_set.add(product_name)
+
+#             if str(date) not in response_data:
+#                 response_data[str(date)] = {}
+
+#             if defect_name not in response_data[str(date)]:
+#                 response_data[str(date)][defect_name] = 0
+
+#             response_data[str(date)][defect_name] += record.count
+
+#     # Sort response_data by date
+#     sorted_response_data = OrderedDict(sorted(response_data.items()))
+
+#     # Add the active_products list
+#     products_list = list(products_set)
+#     sorted_response_data['active_products'] = products_list
+
+#     # Set the sorted data in the cache
+#     cache.set(CACHE_KEY, sorted_response_data, timeout=CACHE_TIMEOUT)
+    
+#     logger.info(f"Cache set with key '{CACHE_KEY}': {sorted_response_data}")
+
+
 import logging
 from django.core.cache import cache
 from datetime import datetime, timedelta
@@ -317,15 +388,21 @@ PLANT_ID = 2  # Plant ID to cache data for
 @shared_task
 def cache_dashboard_data():
     now = datetime.utcnow()
-    from_date = now - timedelta(days=15)
+    from_date = now - timedelta(days=7)
     to_date = now
 
-    # Convert datetime to string for easier comparison
+    # Convert datetime to string for filtering
     from_date_str = from_date.strftime('%Y-%m-%d')
     to_date_str = to_date.strftime('%Y-%m-%d')
 
-    # Filter queryset by plant_id
-    queryset = Dashboard.objects.filter(plant_id=PLANT_ID, recorded_date_time__contains='T')  # Adjust filter as needed
+    # Filter queryset by plant_id and date range
+    queryset = Dashboard.objects.filter(
+        plant_id=PLANT_ID,
+        recorded_date_time__gte=from_date_str,
+        recorded_date_time__lte=to_date_str
+    )
+
+    # logger.info(f"Queryset for plant_id={PLANT_ID}, date range {from_date_str} to {to_date_str}: {queryset}")
     response_data = {}
     products_set = set()
 
@@ -334,10 +411,11 @@ def cache_dashboard_data():
             continue
 
         try:
-            # Extract and parse the date part from the string
-            record_date_str = record.recorded_date_time.split('T')[0]  # Extract date part
+            # Use the recorded_date_time directly as it is in 'YYYY-MM-DD' format
+            record_date_str = record.recorded_date_time
             date = datetime.strptime(record_date_str, '%Y-%m-%d').date()
         except ValueError:
+            logger.error(f"Invalid date format in record: {record.recorded_date_time}")
             continue
 
         if from_date.date() <= date <= to_date.date():
@@ -345,10 +423,15 @@ def cache_dashboard_data():
                 defect = Defects.objects.get(id=record.defects_id)
                 defect_name = defect.name
             except Defects.DoesNotExist:
+                logger.error(f"Defect with ID {record.defects_id} does not exist.")
                 continue
 
-            product_name = record.product.name
-            products_set.add(product_name)
+            try:
+                product_name = record.product.name
+                products_set.add(product_name)
+            except AttributeError:
+                logger.error(f"Product for record {record.id} does not exist.")
+                continue
 
             if str(date) not in response_data:
                 response_data[str(date)] = {}
@@ -356,7 +439,13 @@ def cache_dashboard_data():
             if defect_name not in response_data[str(date)]:
                 response_data[str(date)][defect_name] = 0
 
-            response_data[str(date)][defect_name] += record.count
+            try:
+                count = int(record.count)  # Convert count to int if needed
+            except ValueError:
+                logger.error(f"Invalid count value in record: {record.count}")
+                continue
+
+            response_data[str(date)][defect_name] += count
 
     # Sort response_data by date
     sorted_response_data = OrderedDict(sorted(response_data.items()))
