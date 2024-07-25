@@ -312,7 +312,7 @@ logger = logging.getLogger(__name__)
 
 CACHE_KEY = 'dashboard_data'  # Define your cache key
 CACHE_TIMEOUT = 60 * 60  # Cache timeout in seconds (e.g., 1 hour)
-PLANT_ID = 4  # Plant ID to cache data for
+PLANT_ID = 2  # Plant ID to cache data for
 
 @shared_task
 def cache_dashboard_data():

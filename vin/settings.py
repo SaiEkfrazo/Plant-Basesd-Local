@@ -131,23 +131,23 @@ SWAGGER_SETTINGS = {
 # settings for local mysql 
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'vin',                  # Local database name
-        'USER': 'saitreddy',            # Local database user
-        'PASSWORD': 'sai',              # Local database password
-        'HOST': 'localhost',            # Local database host
-        'PORT': '3306',                 # Local database port
-    },
-    # 'default':
-    #        {
-    #        'ENGINE': 'django.db.backends.mysql',
-    #        'NAME': 'vin',
-    #        'USER': 'root',  
-    #        'PASSWORD': 'sai',  
-    #        'HOST': 'db',  
-    #        'PORT': '3306',    
-    #        },
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.mysql',
+    #     'NAME': 'vin',                  # Local database name
+    #     'USER': 'saitreddy',            # Local database user
+    #     'PASSWORD': 'sai',              # Local database password
+    #     'HOST': 'localhost',            # Local database host
+    #     'PORT': '3306',                 # Local database port
+    # },
+    'default':
+           {
+           'ENGINE': 'django.db.backends.mysql',
+           'NAME': 'vin',
+           'USER': 'root',  
+           'PASSWORD': 'sai',  
+           'HOST': 'db',  
+           'PORT': '3306',    
+           },
     'cloud': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'VIN_LOCAL',            # Cloud database name
@@ -224,7 +224,7 @@ REST_FRAMEWORK = {
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'redis://127.0.0.1:6379/1',
+        'LOCATION': 'redis://redis:6379/1',
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         }
@@ -307,13 +307,13 @@ USE_TZ = True
 
 # media files settings for docker 
 
-# MEDIA_URL = '/media/'
-# MEDIA_ROOT = '/app/media/'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = '/app/media/'
 
 # media files settings for local 
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# MEDIA_URL = '/media/'
+# MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 PORT = '8000'
 # Static files (CSS, JavaScript, Images)
@@ -354,8 +354,8 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 
 # Celery Configuration
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_BROKER_URL = 'redis://redis:6379/0'
+CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
 
 # Celery Beat Scheduler
 CELERY_BEAT_SCHEDULE = {

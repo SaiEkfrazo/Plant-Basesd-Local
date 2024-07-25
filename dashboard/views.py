@@ -663,7 +663,7 @@ class DashboardAPIView(viewsets.ModelViewSet):
                 product_id=product_id,
                 defects_id=defects_id,
                 plant_id=plant_id,
-                recorded_date_time=recorded_date_time
+                recorded_date_time=recorded_date
             )
 
             if not created:
