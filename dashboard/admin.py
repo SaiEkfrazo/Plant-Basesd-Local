@@ -51,3 +51,7 @@ admin.site.register(DefectNotification)
 @admin.register(SystemStatus)
 class PlantAdmin(ImportExportModelAdmin):
     list_display = ('id','machine','plant', 'system_status')
+
+@admin.register(LiquidPlant)
+class LiqudPlantAdmin(ImportExportModelAdmin):
+    list_display = ('id','machines','department','product','defects','image','plant','recorded_date_time')

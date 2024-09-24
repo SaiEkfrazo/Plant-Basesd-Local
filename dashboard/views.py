@@ -571,7 +571,7 @@ from rest_framework.response import Response
 from django.core.cache import cache
 from datetime import datetime, timedelta
 from collections import defaultdict
-
+from datetime import datetime, time
 
 @method_decorator(csrf_exempt, name='dispatch')
 class DashboardAPIView(viewsets.ModelViewSet):
@@ -598,7 +598,9 @@ class DashboardAPIView(viewsets.ModelViewSet):
                 'defects_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='Defect ID'),
                 'plant_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='Plant ID'),
                 'recorded_date_time': openapi.Schema(type=openapi.TYPE_STRING, description='Recorded Date Time'),
-                'rca': openapi.Schema(type=openapi.TYPE_STRING, description='RCA')
+                'rca': openapi.Schema(type=openapi.TYPE_STRING, description='RCA'),
+                'ocr': openapi.Schema(type=openapi.TYPE_STRING, description='OCR')
+
             },
             required=['base64_image', 'machines_id', 'department_id', 'product_id', 'defects_id', 'plant_id', 'recorded_date_time']
         ),
@@ -616,9 +618,10 @@ class DashboardAPIView(viewsets.ModelViewSet):
         defects_id = request.data.get('defects_id', None)
         plant_id = request.data.get('plant_id', None)
         recorded_date_time = request.data.get('recorded_date_time', None)
-        rca_field = request.data.get('rca', None)  # Changed from rca_id to rca_field
+        rca_field = request.data.get('rca', None)
+        ocr = request.data.get('ocr', None)
 
-        # Validate if all required fields are provided
+        # Validate required fields
         if not all([base64_image, machines_id, department_id, product_id, defects_id, plant_id, recorded_date_time]):
             return Response({'error': 'Missing required fields.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -629,7 +632,7 @@ class DashboardAPIView(viewsets.ModelViewSet):
         try:
             decoded_image = base64.b64decode(base64_image)
             media_path = os.path.join(settings.MEDIA_ROOT, 'images')
-            os.makedirs(media_path, exist_ok=True)  # Ensure the directory exists
+            os.makedirs(media_path, exist_ok=True)
             path = os.path.join(media_path, file_name)
             with default_storage.open(path, 'wb') as f:
                 f.write(decoded_image)
@@ -637,6 +640,9 @@ class DashboardAPIView(viewsets.ModelViewSet):
             return Response({'error': f'Failed to upload image: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
         image_url = os.path.join(settings.MEDIA_URL, 'images', file_name)
+
+        # Determine the shift based on the recorded date time
+        shift = self.get_shift_from_time(recorded_date_time)
 
         try:
             # Determine the model to use based on the plant_id
@@ -651,34 +657,52 @@ class DashboardAPIView(viewsets.ModelViewSet):
                 product_id=product_id,
                 defects_id=defects_id,
                 plant_id=plant_id,
-                image=image_url,  # Save the local URL in the image field
-                recorded_date_time=recorded_date_time
+                image=image_url,
+                recorded_date_time=recorded_date_time,
+                ocr=ocr,
+                shift=shift  # Store the determined shift
             )
-            print('record',record)
+
             recorded_date = recorded_date_time[:10]
 
-            dashboard_entry, created = Dashboard.objects.get_or_create(
+            # Update or create a dashboard entry
+            # Check if there's an existing dashboard entry with the same shift
+            dashboard_entry = Dashboard.objects.filter(
                 machines_id=machines_id,
                 department_id=department_id,
                 product_id=product_id,
                 defects_id=defects_id,
                 plant_id=plant_id,
-                recorded_date_time=recorded_date
-            )
+                recorded_date_time=recorded_date,
+                shift=shift  # Include shift in the filter
+            ).first()
 
-            if not created:
+            if dashboard_entry:
+                # If an entry exists for the same shift, increment the count
                 dashboard_entry.count += 1
                 dashboard_entry.save()
             else:
-                dashboard_entry.count = 1
-                dashboard_entry.save()
+                # Otherwise, create a new entry
+                dashboard_entry = Dashboard.objects.create(
+                    machines_id=machines_id,
+                    department_id=department_id,
+                    product_id=product_id,
+                    defects_id=defects_id,
+                    plant_id=plant_id,
+                    recorded_date_time=recorded_date,
+                    shift=shift,  # Store the determined shift
+                    count=1  # Initialize count to 1
+                )
 
+
+            # Update machine parameters
             machine_parameter = MachineParameters.objects.filter(parameter="Reject Counter").first()
             if machine_parameter:
                 machine_params_obj, created = MachineParametersGraph.objects.get_or_create(
                     recorded_date_time=recorded_date,
                     machine_parameter=machine_parameter,
-                    plant_id=plant_id
+                    plant_id=plant_id,
+                    machine_id=machines_id
                 )
                 if not created:
                     machine_params_obj.params_count = F('params_count') + 1
@@ -695,25 +719,16 @@ class DashboardAPIView(viewsets.ModelViewSet):
                 if all(defect == last_three_records[0].defects for defect in defects):
                     # Get the RCA for the defect
                     rca = RootCauseAnalysis.objects.filter(defect_id=defects_id).first()
+                    notification_text = f"Defect '{last_three_records[0].defects.name}' has occurred three times consecutively.\n"
+
                     if rca:
-                        notification_text = f"Defect '{rca.defect.name}' has occurred three times consecutively.\n"
                         if rca_field and hasattr(rca, rca_field):
                             notification_text += f"{rca_field.upper()}: {getattr(rca, rca_field)}\n"
                         else:
-                            if rca.rca1:
-                                notification_text += f"RCA1: {rca.rca1}\n"
-                            if rca.rca2:
-                                notification_text += f"RCA2: {rca.rca2}\n"
-                            if rca.rca3:
-                                notification_text += f"RCA3: {rca.rca3}\n"
-                            if rca.rca4:
-                                notification_text += f"RCA4: {rca.rca4}\n"
-                            if rca.rca5:
-                                notification_text += f"RCA5: {rca.rca5}\n"
-                            if rca.rca6:
-                                notification_text += f"RCA6: {rca.rca6}\n"
-                    else:
-                        notification_text = f"Defect '{last_three_records[0].defects.name}' has occurred three times consecutively."
+                            for i in range(1, 7):
+                                rca_text = getattr(rca, f'rca{i}', None)
+                                if rca_text:
+                                    notification_text += f"RCA{i}: {rca_text}\n"
 
                     DefectNotification.objects.create(
                         defect_id=defects_id,
@@ -735,25 +750,40 @@ class DashboardAPIView(viewsets.ModelViewSet):
             return Response({'message': 'Record created successfully'}, status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({'error': f'Failed to save data: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def get_shift_from_time(self, recorded_date_time):
+        # Extract the time from the recorded_date_time string
+        time_format = "%Y-%m-%dT%H:%M:%S"  # Adjust according to your actual format
+        recorded_time = datetime.strptime(recorded_date_time, time_format).time()
+
+        if time(7, 0) <= recorded_time < time(15, 0):
+            return "shift1"
+        elif time(15, 0) <= recorded_time < time(23, 0):
+            return "shift2"
+        else:
+            return "shift3"
+
     @swagger_auto_schema(
-        manual_parameters=[
-            openapi.Parameter('plant_id', openapi.IN_QUERY, description="Plant ID", type=openapi.TYPE_INTEGER),
-            openapi.Parameter('from_date', openapi.IN_QUERY, description="Start date (YYYY-MM-DD)", type=openapi.TYPE_STRING),
-            openapi.Parameter('to_date', openapi.IN_QUERY, description="End date (YYYY-MM-DD)", type=openapi.TYPE_STRING),
-            openapi.Parameter('machine_id', openapi.IN_QUERY, description="Machine ID", type=openapi.TYPE_INTEGER),
-            openapi.Parameter('department_id', openapi.IN_QUERY, description="Department ID", type=openapi.TYPE_INTEGER),
-            openapi.Parameter('product_id', openapi.IN_QUERY, description="Product ID", type=openapi.TYPE_INTEGER),
-            openapi.Parameter('defect_id', openapi.IN_QUERY, description="Defect ID", type=openapi.TYPE_INTEGER),
-        ],
-        operation_description="List defect counts for a specific plant within the specified date range and filters",
-        responses={
-            200: openapi.Response(description="Records retrieved successfully"),
-            400: openapi.Response(description="Missing or invalid parameters"),
-            404: openapi.Response(description="Plant not found"),
-            500: openapi.Response(description="Failed to retrieve records")
-        },
-        operation_summary="Dashboard Data"
-    )
+    manual_parameters=[
+        openapi.Parameter('plant_id', openapi.IN_QUERY, description="Plant ID", type=openapi.TYPE_INTEGER),
+        openapi.Parameter('from_date', openapi.IN_QUERY, description="Start date (YYYY-MM-DD)", type=openapi.TYPE_STRING),
+        openapi.Parameter('to_date', openapi.IN_QUERY, description="End date (YYYY-MM-DD)", type=openapi.TYPE_STRING),
+        openapi.Parameter('machine_id', openapi.IN_QUERY, description="Machine ID", type=openapi.TYPE_INTEGER),
+        openapi.Parameter('department_id', openapi.IN_QUERY, description="Department ID", type=openapi.TYPE_INTEGER),
+        openapi.Parameter('product_id', openapi.IN_QUERY, description="Product ID", type=openapi.TYPE_INTEGER),
+        openapi.Parameter('defect_id', openapi.IN_QUERY, description="Defect ID", type=openapi.TYPE_INTEGER),
+        openapi.Parameter('shift', openapi.IN_QUERY, description="Shift (e.g., morning, afternoon, night)", type=openapi.TYPE_STRING),
+    ],
+    operation_description="List defect counts for a specific plant within the specified date range and filters",
+    responses={
+        200: openapi.Response(description="Records retrieved successfully"),
+        400: openapi.Response(description="Missing or invalid parameters"),
+        404: openapi.Response(description="Plant not found"),
+        500: openapi.Response(description="Failed to retrieve records")
+    },
+    operation_summary="Dashboard Data"
+)
+
     def list(self, request, *args, **kwargs):
         plant_id = request.query_params.get('plant_id')
         from_date_str = request.query_params.get('from_date')
@@ -762,6 +792,7 @@ class DashboardAPIView(viewsets.ModelViewSet):
         department_id = request.query_params.get('department_id')
         product_id = request.query_params.get('product_id')
         defect_id = request.query_params.get('defect_id')
+        shift_filter = request.query_params.get('shift')  # Add shift filter
 
         if not plant_id:
             return Response({"message": "plant_id is required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -780,12 +811,11 @@ class DashboardAPIView(viewsets.ModelViewSet):
             return Response({"message": "Invalid date format provided. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check if any filters are applied
-        filters_applied = bool(machine_id or department_id or product_id or defect_id or from_date or to_date)
+        filters_applied = bool(machine_id or department_id or product_id or defect_id or from_date or to_date or shift_filter)
 
         if not filters_applied:
             cache_key = f'{CACHE_KEY}'
             cached_data = cache.get(cache_key)
-            print('cached data',cached_data)
             if cached_data:
                 return Response(cached_data, status=status.HTTP_200_OK)
 
@@ -798,6 +828,8 @@ class DashboardAPIView(viewsets.ModelViewSet):
             filter_criteria['product_id'] = product_id
         if defect_id:
             filter_criteria['defects_id'] = defect_id
+        if shift_filter:
+            filter_criteria['shift'] = shift_filter  # Apply the shift filter
 
         queryset = Dashboard.objects.filter(**filter_criteria)
         response_data = {}
@@ -857,6 +889,8 @@ class ReportsAPIView(viewsets.ViewSet):
             openapi.Parameter('department_id', openapi.IN_QUERY, description="Department ID", type=openapi.TYPE_INTEGER),
             openapi.Parameter('product_id', openapi.IN_QUERY, description="Product ID", type=openapi.TYPE_INTEGER),
             openapi.Parameter('defect_id', openapi.IN_QUERY, description="Defect ID", type=openapi.TYPE_INTEGER),
+            openapi.Parameter('shift', openapi.IN_QUERY, description="Defect ID", type=openapi.TYPE_STRING),
+
         ],
         operation_description="List defect counts for a specific plant within the specified date range and filters",
         responses={
@@ -875,7 +909,8 @@ class ReportsAPIView(viewsets.ViewSet):
         department_id = request.query_params.get('department_id', None)
         product_id = request.query_params.get('product_id', None)
         defect_id = request.query_params.get('defect_id', None)
-    
+        shift_filter = request.query_params.get('shift',None)
+
         if not plant_id:
             return Response({"message": "plant_id is required."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -903,6 +938,9 @@ class ReportsAPIView(viewsets.ViewSet):
 
             if defect_id:
                 filter_criteria['defects__id'] = defect_id
+
+            if shift_filter:
+                filter_criteria['shift'] = shift_filter
 
             # Apply date range filters
             queryset = model.objects.filter(**filter_criteria)
@@ -938,7 +976,9 @@ class ReportsAPIView(viewsets.ViewSet):
                     'defect': defect_name,
                     'image': record.image,
                     'plant': plant_name,
+                    'ocr':record.ocr,
                     'recorded_date_time': record.recorded_date_time,
+                    'shift':record.shift
                 }
                 response_data.append(serialized_data)
 
@@ -946,6 +986,7 @@ class ReportsAPIView(viewsets.ViewSet):
 
         except Exception as e:
             return Response({"message": f"Failed to retrieve records: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class AISmartAPIView(viewsets.ViewSet):
     MODEL_MAPPING = {
@@ -1078,7 +1119,8 @@ class MachineParametersGraphView(APIView):
 
     @swagger_auto_schema(
         manual_parameters=[
-            openapi.Parameter('plant_id', openapi.IN_QUERY, description="Plant ID", type=openapi.TYPE_INTEGER),
+            openapi.Parameter('plant_id', openapi.IN_QUERY, description="Plant ID", type=openapi.TYPE_STRING),
+            openapi.Parameter('machine_id', openapi.IN_QUERY, description="Machine ID", type=openapi.TYPE_STRING),
         ],
         responses={200: openapi.Response(description="Machine Parameters Graph", examples={
             "application/json": [
@@ -1091,38 +1133,52 @@ class MachineParametersGraphView(APIView):
                     "defect_percentage": 20.0
                 }
             ]
-        })}
+        })},
     )
     def get(self, request):
+        # Get the plant_id and machine_id from query parameters (no encryption)
         plant_id = request.query_params.get('plant_id')
+        machine_id = request.query_params.get('machine_id')  # Optional
 
-        filters = {}
-        if plant_id:
-            filters['plant_id'] = plant_id
+        # Check if plant_id is provided
+        if not plant_id:
+            return Response({'message': 'plant_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Filter the queryset based on the plant_id only
-        parameters_graph = MachineParametersGraph.objects.filter(**filters)
+        # Calculate the date 15 days ago
+        today = datetime.now().date()
+        fifteen_days_ago = today - timedelta(days=15)
+        fifteen_days_ago_str = fifteen_days_ago.isoformat()
+
+        # Set up filters with plant_id and date range
+        filters = {'recorded_date_time__gte': fifteen_days_ago_str, 'plant_id': plant_id}
         
+        # Add machine_id to filters only if it's provided
+        if machine_id:
+            filters['machine_id'] = machine_id
+
+        # Filter the queryset based on plant_id, machine_id (if present), and date range
+        parameters_graph = MachineParametersGraph.objects.filter(**filters)
+
         # Aggregating counts per day
         date_aggregates = defaultdict(lambda: {'defect_count': 0, 'total_production_count': 0})
-        
+
         for graph in parameters_graph:
             date_only_str = graph.recorded_date_time[:10]  # Extracting date part
             if graph.machine_parameter.parameter == "Reject Counter":
                 date_aggregates[date_only_str]['defect_count'] += int(graph.params_count)
             elif graph.machine_parameter.parameter in ["Program Counter", "Machine Counter"]:
                 date_aggregates[date_only_str]['total_production_count'] += int(graph.params_count)
-        
+
         data = []
         for date_only_str, counts in date_aggregates.items():
             defect_count = counts['defect_count']
             total_production_count = counts['total_production_count']
-            
+
             if total_production_count > 0:
                 defect_percentage = (defect_count / total_production_count) * 1000000
             else:
                 defect_percentage = 0
-            
+
             data.append({
                 "date_time": date_only_str,
                 "defect_percentage": round(defect_percentage, 2)
@@ -1141,6 +1197,7 @@ class MachineParametersGraphView(APIView):
             'recorded_date_time': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATETIME, description='Recorded date and time'),
             'parameter': openapi.Schema(type=openapi.TYPE_INTEGER, description='Parameter ID'),
             'plant_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='Plant ID'),
+            'machine_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='Machine ID'),
         },
     ), responses={201: 'Created', 400: 'Bad Request', 404: 'Not Found'})
 
@@ -1151,7 +1208,7 @@ class MachineParametersGraphView(APIView):
         date_time_str = request.data.get('recorded_date_time')
         parameter_id = request.data.get('parameter')  # Assuming parameter_id is provided
         plant_id = request.data.get('plant_id')
-
+        machine_id = request.data.get('machine_id')
         try:
             # Fetch the MachineParameters instance corresponding to the provided parameter_id
             parameter = MachineParameters.objects.get(pk=parameter_id)
@@ -1162,7 +1219,8 @@ class MachineParametersGraphView(APIView):
             existing_graph = MachineParametersGraph.objects.filter(
                 recorded_date_time__startswith=date_only_str, 
                 machine_parameter=parameter,
-                plant_id=plant_id
+                plant_id=plant_id,
+                machine_id=machine_id
             ).first()
 
             if existing_graph:
@@ -1177,7 +1235,8 @@ class MachineParametersGraphView(APIView):
                     machine_parameter=parameter,
                     params_count=params_count,
                     recorded_date_time=date_time_str,
-                    plant_id=plant_id
+                    plant_id=plant_id,
+                    machine_id= machine_id
                 )
                 return Response({'message': 'MachineParametersGraph created successfully'}, status=status.HTTP_201_CREATED)
         except MachineParameters.DoesNotExist:

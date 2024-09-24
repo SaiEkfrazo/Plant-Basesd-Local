@@ -37,8 +37,7 @@ WORKDIR /app
 COPY . /app
 
 # Install any needed packages specified in requirements.txt
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt && \
+RUN pip install -r requirements.txt && \
     pip install gunicorn daphne celery redis
 
 RUN python manage.py collectstatic --noinput

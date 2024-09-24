@@ -8,7 +8,7 @@ from django.template.loader import render_to_string
 import environ
 from collections import defaultdict
 from datetime import datetime, date, timedelta
-from .models import Defects, MachineParametersGraph, LiquidPlant, Dashboard
+from .models import *
 
 from django.core.cache import cache
 
@@ -19,7 +19,7 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from celery import shared_task
 from django.conf import settings
-from .models import LiquidPlant, MachineParametersGraph
+# from .models import LiquidPlant, MachineParametersGraph
 
 
 # Initialize environment variables
@@ -40,8 +40,7 @@ def sync_data_with_cloud():
             # Fetch existing record IDs and recorded_date_times in the cloud database for quick lookup
             cloud_cursor.execute("SELECT id, recorded_date_time FROM LiquidPlant;")
             cloud_records = cloud_cursor.fetchall()
-            cloud_ids = {r[0] for r in cloud_records}
-            cloud_recorded_dates = {str(r[1]) for r in cloud_records}
+            cloud_records_dict = {r[0]: str(r[1]) for r in cloud_records}
 
             # Initialize the S3 client for DigitalOcean Spaces
             s3_client = boto3.client(
@@ -52,20 +51,33 @@ def sync_data_with_cloud():
                 aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY
             )
 
-            # Track synced records to avoid duplicates
-            synced_records = []
-
             # Iterate through local records and compare with cloud records
             for record in local_records:
                 record_id = record[0]
                 recorded_date_time = str(record[2])
 
-                # Check if the record ID or recorded_date_time already exists in the cloud database
-                if record_id in cloud_ids or recorded_date_time in cloud_recorded_dates:
-                    print(f"Skipping record {record_id} with recorded_date_time {recorded_date_time} as it already exists in the cloud.")
-                    continue
+                # Check if the record ID already exists in the cloud database
+                if record_id in cloud_records_dict:
+                    if cloud_records_dict[record_id] == recorded_date_time:
+                        print(f"Record {record_id} with recorded_date_time {recorded_date_time} already exists in the cloud and is up-to-date.")
+                        continue
+                    else:
+                        # Update the existing record
+                        print(f"Updating record {record_id} in the cloud.")
+                        cloud_cursor.execute("""
+                            UPDATE LiquidPlant 
+                            SET image = %s, recorded_date_time = %s, defects_id = %s, department_id = %s, machines_id = %s, plant_id = %s, product_id = %s,ocr = %s,shift=%s
+                            WHERE id = %s
+                        """, (record[1], recorded_date_time, record[3], record[4], record[5], record[6], record[7],record[8],record[9], record_id))
+                else:
+                    # Insert a new record
+                    print(f"Inserting record {record_id} into the cloud.")
+                    cloud_cursor.execute("""
+                        INSERT INTO LiquidPlant (id, image, recorded_date_time, defects_id, department_id, machines_id, plant_id, product_id,ocr,shift)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (record_id, record[1], recorded_date_time, record[3], record[4], record[5], record[6], record[7],record[8],record[9]))
 
-                # Fetch the image path from the database (assuming it's stored in the 1st column, adjust if needed)
+                # Fetch the image path from the database
                 image_relative_path = record[1]
 
                 # Construct full image path without adding /media again
@@ -105,17 +117,15 @@ def sync_data_with_cloud():
                         # Update the image URL to the cloud path
                         cloud_image_url = f"https://{env('SPACE_ENDPOINT')}/{settings.AWS_STORAGE_BUCKET_NAME}/{s3_path}"
 
-                        # Insert the record into the cloud database
+                        # Update the record with the new image URL
                         cloud_cursor.execute("""
-                            INSERT INTO LiquidPlant (image, recorded_date_time, defects_id, department_id, machines_id, plant_id, product_id)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s)
-                        """, (cloud_image_url, record[2], record[3], record[4], record[5], record[6], record[7]))
+                            UPDATE LiquidPlant 
+                            SET image = %s 
+                            WHERE id = %s
+                        """, (cloud_image_url, record_id))
 
                         # Optionally, log success
-                        print(f"Record synced: {record}")
-
-                        # Add the record ID to the synced list
-                        synced_records.append(record_id)
+                        print(f"Record synced: {record_id}")
 
                     except Exception as e:
                         print(f"Failed to upload image for record {record_id}: {e}")
@@ -132,10 +142,10 @@ def sync_data_with_cloud():
 
 from datetime import datetime, timedelta
 from collections import defaultdict
-from django.utils import timezone
+from django.utils import timezone   
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
-from .models import LiquidPlant, MachineParametersGraph, Defects
+# from .models import LiquidPlant, MachineParametersGraph, Defects
 from django.conf import settings
 from celery import shared_task
 
@@ -273,7 +283,8 @@ def sync_machine_parameters():
             global_record = MachineParametersGraph.objects.using('cloud').filter(
                 recorded_date_time__startswith=date_part,
                 machine_parameter=record.machine_parameter,
-                plant=record.plant
+                plant=record.plant,
+                machine=record.machine  # Use machine_id here
             ).first()
 
             if global_record:
@@ -286,7 +297,8 @@ def sync_machine_parameters():
                     machine_parameter=record.machine_parameter,
                     params_count=record.params_count,
                     recorded_date_time=record.recorded_date_time,
-                    plant=record.plant
+                    plant=record.plant,
+                    machine=record.machine  # Use machine directly here
                 )
                 records_to_create.append(new_global_record)
 
@@ -299,6 +311,7 @@ def sync_machine_parameters():
     if records_to_create:
         MachineParametersGraph.objects.using('cloud').bulk_create(records_to_create)
         print(f'Created {len(records_to_create)} new records in global database')
+
 
 
 # import logging
@@ -375,7 +388,7 @@ def sync_machine_parameters():
 import logging
 from django.core.cache import cache
 from datetime import datetime, timedelta
-from .models import Dashboard, Defects  # Ensure these imports are correct
+# from .models import Dashboard, Defects  # Ensure these imports are correct
 from collections import OrderedDict
 from celery import shared_task
 
@@ -383,7 +396,7 @@ logger = logging.getLogger(__name__)
 
 CACHE_KEY = 'dashboard_data'  # Define your cache key
 CACHE_TIMEOUT = 60 * 60  # Cache timeout in seconds (e.g., 1 hour)
-PLANT_ID = 2  # Plant ID to cache data for
+PLANT_ID = 3  # Plant ID to cache data for
 
 @shared_task
 def cache_dashboard_data():
@@ -458,3 +471,134 @@ def cache_dashboard_data():
     cache.set(CACHE_KEY, sorted_response_data, timeout=CACHE_TIMEOUT)
     
     logger.info(f"Cache set with key '{CACHE_KEY}': {sorted_response_data}")
+
+
+from datetime import datetime, timedelta
+import os
+
+logger = logging.getLogger(__name__)
+
+# Docker volume path
+DOCKER_VOLUME_PATH = '/var/lib/docker/volumes/plant-basesd-local_media_volume/_data/images/'
+
+@shared_task
+def delete_old_data_and_images():
+    try:
+        today = datetime.now().date()  # Get today's date
+        cutoff_date = today - timedelta(days=15)  # Calculate cutoff date
+
+        models = [NMBDashboard, LiquidPlant, ShampooPlant]
+        
+        for model in models:
+            old_records = model.objects.filter(recorded_date_time__lt=cutoff_date.strftime('%Y-%m-%d'))
+            count = old_records.count()
+            logger.info(f"Number of records to delete from {model.__name__}: {count}")
+
+            for record in old_records:
+                logger.info(f"Processing record ID: {record.pk}, Image URL: {record.image}")
+
+                image_url = record.image
+                if image_url:
+                    # Extract the file name from the image URL
+                    file_name = os.path.basename(image_url)
+                    
+                    # Construct the full path to the image in the Docker volume
+                    docker_image_path = os.path.join(DOCKER_VOLUME_PATH, file_name)
+                    print('docker image path',docker_image_path)
+                    if os.path.exists(docker_image_path):
+                        try:
+                            os.remove(docker_image_path)
+                            logger.info(f"Successfully deleted image from Docker volume: {file_name}")
+                        except Exception as e:
+                            logger.error(f"Failed to delete image from Docker volume: {file_name}, Error: {e}")
+                    else:
+                        logger.warning(f"Image not found in Docker volume: {file_name}")
+                
+                # Delete the record from the database
+                record.delete()
+                if not model.objects.filter(pk=record.pk).exists():
+                    logger.info(f"Successfully deleted record ID: {record.pk}")
+                else:
+                    logger.error(f"Failed to delete record ID: {record.pk}")
+        
+        logger.info('Successfully deleted old data and images.')
+        return 'Successfully deleted old data and images.'
+    
+    except Exception as e:
+        logger.error(f"Error in delete_old_data_and_images: {e}")
+        return f"Error in delete_old_data_and_images: {e}"
+
+
+@shared_task
+def sync_dashboard_data():
+    # Fetch all records from the local database
+    local_records = Dashboard.objects.using('default').all()
+    records_to_update = []
+    records_to_create = []
+
+    for record in local_records:
+        # Extract the date part from recorded_date_time
+        date_part = record.recorded_date_time.split('T')[0]
+
+        with transaction.atomic(using='cloud'):
+            # Check if a matching record exists in the global database
+            global_record = Dashboard.objects.using('cloud').filter(
+                recorded_date_time__startswith=date_part,
+                machines=record.machines,
+                department=record.department,
+                product=record.product,
+                defects=record.defects,
+                plant=record.plant,
+                shift=record.shift
+            ).first()
+
+            if global_record:
+                # Update the existing record's count
+                global_record.count = record.count
+                records_to_update.append(global_record)
+            else:
+                # Create a new record
+                new_global_record = Dashboard(
+                    machines=record.machines,
+                    department=record.department,
+                    product=record.product,
+                    defects=record.defects,
+                    plant=record.plant,
+                    recorded_date_time=record.recorded_date_time,
+                    count=record.count,
+                    shift=record.shift
+                )
+                records_to_create.append(new_global_record)
+
+    # Perform bulk update
+    if records_to_update:
+        Dashboard.objects.using('cloud').bulk_update(records_to_update, ['count'])
+        print(f'Updated {len(records_to_update)} records in global database')
+
+    # Perform bulk create
+    if records_to_create:
+        Dashboard.objects.using('cloud').bulk_create(records_to_create)
+        print(f'Created {len(records_to_create)} new records in global database')
+
+
+from django.db import connection
+
+@shared_task
+def cleanup_old_records():
+    # Define the SQL query
+    query = """
+    DELETE FROM LiquidPlant
+    WHERE recorded_date_time < (
+        SELECT recorded_date_time
+        FROM (
+            SELECT recorded_date_time
+            FROM LiquidPlant
+            ORDER BY recorded_date_time DESC
+            LIMIT 1 OFFSET 9999
+        ) AS cutoff
+    );
+    """
+    
+    # Execute the query
+    with connection.cursor() as cursor:
+        cursor.execute(query)

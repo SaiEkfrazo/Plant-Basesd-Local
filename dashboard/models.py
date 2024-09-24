@@ -77,6 +77,8 @@ class LiquidPlant(models.Model): # liquid means comfort sachet plant
     image = models.CharField(max_length=250,blank=True,null=True)
     plant = models.ForeignKey(Plant,on_delete=models.CASCADE,blank=False,null=False)
     recorded_date_time = models.CharField(max_length=200,blank=True,null=True)
+    shift = models.CharField(max_length=100,blank=True,null=True)
+    ocr = models.TextField(blank=True,null=True)
 
 class ShampooPlant(models.Model):  ## shampoo plant 
     class Meta:
@@ -135,10 +137,10 @@ class MachineParametersGraph(models.Model):
     params_count = models.CharField(max_length=200,blank=True,null=True)
     recorded_date_time = models.CharField(max_length=200,blank=True,null=True)
     plant = models.ForeignKey(Plant,on_delete=models.CASCADE,null=True,blank=True)
-
+    machine = models.ForeignKey(Machines,on_delete=models.SET_NULL,null=True,blank=True)
 
 class DefectNotification(models.Model):
-    class Meta:
+    class Meta: 
         db_table = 'DefectNotification'
     defect = models.ForeignKey(Defects,on_delete=models.CASCADE,null=False,blank=False)
     notification_text = models.TextField(null=True,blank=True)    
@@ -167,9 +169,10 @@ class Dashboard(models.Model):
     plant = models.ForeignKey(Plant, on_delete=models.CASCADE)
     recorded_date_time = models.CharField(max_length=255)  # Store date and time as string
     count = models.BigIntegerField(default=0)  # Count of occurrences
+    shift = models.CharField(max_length=100,blank=True,null=True)
 
     class Meta:
         db_table = 'Dashboard'
-        indexes = [
+        indexes = [ 
             models.Index(fields=['recorded_date_time']),                        # Index on recorded_date_time
         ]
