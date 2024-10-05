@@ -627,6 +627,13 @@ services:
     depends_on:
       - django
 
+  vin_frontend:
+    image: vin_frontend:v1
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:3000 
+
 volumes:
   media_volume:
   mysql_data:

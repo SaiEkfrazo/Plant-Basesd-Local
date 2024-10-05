@@ -66,16 +66,16 @@ def sync_data_with_cloud():
                         print(f"Updating record {record_id} in the cloud.")
                         cloud_cursor.execute("""
                             UPDATE LiquidPlant 
-                            SET image = %s, recorded_date_time = %s, defects_id = %s, department_id = %s, machines_id = %s, plant_id = %s, product_id = %s,ocr = %s,shift=%s
+                            SET image = %s, recorded_date_time = %s, defects_id = %s, department_id = %s, machines_id = %s, plant_id = %s, product_id = %s, ocr = %s, shift = %s
                             WHERE id = %s
-                        """, (record[1], recorded_date_time, record[3], record[4], record[5], record[6], record[7],record[8],record[9], record_id))
+                        """, (record[1], recorded_date_time, record[3], record[4], record[5], record[6], record[7], record[8], record[9], record_id))
                 else:
                     # Insert a new record
                     print(f"Inserting record {record_id} into the cloud.")
                     cloud_cursor.execute("""
-                        INSERT INTO LiquidPlant (id, image, recorded_date_time, defects_id, department_id, machines_id, plant_id, product_id,ocr,shift)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    """, (record_id, record[1], recorded_date_time, record[3], record[4], record[5], record[6], record[7],record[8],record[9]))
+                        INSERT INTO LiquidPlant (id, image, recorded_date_time, defects_id, department_id, machines_id, plant_id, product_id, ocr, shift)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (record_id, record[1], recorded_date_time, record[3], record[4], record[5], record[6], record[7], record[8], record[9]))
 
                 # Fetch the image path from the database
                 image_relative_path = record[1]
@@ -137,7 +137,6 @@ def sync_data_with_cloud():
 
     except Exception as e:
         print(f"Error syncing records. Error: {e}")
-
 
 
 from datetime import datetime, timedelta
